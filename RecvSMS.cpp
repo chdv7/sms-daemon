@@ -435,7 +435,7 @@ int CRecvSMSList::ProcessPDU(const char*  pdu)
 	XMLNode xSMS = sms.GenXML(m_bAddDebugInfo);
 	m_nPartsProcessed++;
 
-	if (::GetXMLInt(xSMS, "nparts", 0) < 2) {
+	if (::GetXMLInt(xSMS, "nparts", 0) <= 1) {
 		SaveSMS(xSMS);
 	}
 	else {
