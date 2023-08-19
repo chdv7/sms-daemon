@@ -1,48 +1,121 @@
-#include "rsserial.h"
-#include "RecvSMS.h"
-#include "ut.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <dirent.h>
+#include <unistd.h>
+#include <errno.h>
 #include <iostream>
+
+#include "ut.h"
+#include "sms-daemon-mdm.h"
 #include "sms-daemon.h"
 
+using namespace std;
+
+
+//#define __DO_NOT_DEL_SMS__
 
 static const char* answers[] = {"OK\r", "ERROR\r",  NULL};
 static const char* answers_go[] = {">", "OK\r", "ERROR\r",  NULL };
 
 
+static bool const HexDecChars[128] = {
+	//      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, A, B, C, D, E, F
+	/* 0 */	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	/* 1 */	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	/* 2 */	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	/* 3 */	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0,
+	/* 4 */	0, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	/* 5 */	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	/* 6 */	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	/* 7 */	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	/* 8 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	   9 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	   A 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	   B   	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	   C   	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	   D   	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	   E   	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	   F   	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	*/
+};
 
-bool DelSMS (CSerial* connector, int smsNo){
-#ifdef _DEBUG__
-	return true;
-#else
-	char command[100];
-	sprintf (command, "at+cmgd=%d,0\r", smsNo);
+bool isHexDecChar(char chr) {
+	return chr & 0x80 ? false : HexDecChars[(int)chr];
+}
 
-	if(!connector)
-		return false;
-	int err =  connector->SendExpect(command, answers, 2000);
 
+void CSmsDaemon::Setup() {
+	return;
+}
+int CSmsDaemon::Go() {
+	Init();
+	return Do();
+}
+void CSmsDaemon::Init() {
+
+	m_RecvSMSProcessor.Init(m_CachePath, m_DeviceName);
+	m_RecvSMSProcessor.m_sDestPreffix = m_InSmsXmlDir + "/";
+	m_RecvSMSProcessor.SaveCache();
+	int err = m_Connector.Open(m_DeviceName.c_str());
+	if (err < 0)
+		throw SmsDaemonError(err, (string("Can not open device ") + m_DeviceName).c_str());
+	m_Connector.SetComParams(115200);
+
+	err = m_Connector.SendExpect("\r\rAT&F\r", answers);
 	if (err)
-		fprintf (stderr,"+CMGD error %d\n", err);
+		printf("AT&F error %d\n", err);
 
-	return err;
-#endif
+	err = m_Connector.SendExpect("ATE0\r", answers);
+	if (err)
+		printf("ATE error %d\n", err);
+
+	err = m_Connector.SendExpect("AT+CMGF=0\r", answers);
+	if (err)
+		printf("AT+CMGF error %d\n", err);
+
+	err = m_Connector.SendExpect("AT+CPMS=\"SM\",\"SM\",\"SM\"\r", answers);
+	if (err)
+		printf("AT+CPMS error %d\n", err);
+
+	return;
+
 }
 
-
-void DelMdmSmsByBlock(CSerial* connector, TSmsBlock& block) { // csv list
-	for (unsigned int i = 0; i < block.sms.size(); ++i) {
-		if (block.sms[i].isProcessed)
-			DelSMS(connector, block.sms[i].index);
+int CSmsDaemon::Do() {
+	for (;;) {
+		DoProcessInSMS();
+		DoProcessOutSMS();
+		Sleep(m_LoopDelay);
 	}
+	return 0;
 }
 
-TSmsBlock GetSmsFromModemByCMGR(CSerial* connector) {
+void CSmsDaemon::DoProcessInSMS() {
+	TSmsBlock smsBlock = GetSmsFromModem();
+	if (smsBlock.err < 0) {
+		LogError(smsBlock.err, "Error processing incoming SMS");
+		printf("Error processing incoming SMS: %d\n", smsBlock.err);
+	}
+
+	if (!smsBlock.sms.empty()) {
+		ProcessSmsBlock(smsBlock);
+		DelSMSBlock(smsBlock.sms);
+		m_RecvSMSProcessor.SaveCache();
+	}
+	
+}
+
+CSmsDaemon::TSmsBlock CSmsDaemon::GetSmsFromModemByCMGR() {
 	TSmsBlock rtn;
 	for (int i = 0; i < 255; ++i) {
 		char command[20];
 		sprintf(command, "AT+CMGR=%d\r", i);
 		char log[1000];
-		rtn.err = connector->SendExpect(command, answers, 1000, log, sizeof(log));
+		rtn.err = m_Connector.SendExpect(command, answers, 1000, log, sizeof(log));
 		if (rtn.err) {
 			if (!rtn.sms.empty())
 				rtn.err = 0;
@@ -55,7 +128,7 @@ TSmsBlock GetSmsFromModemByCMGR(CSerial* connector) {
 			if (ptr) {
 				if ((ptr = strchr(ptr, '\r')) == NULL)
 					continue;
-				if (*(++ptr)=='\n')
+				if (*(++ptr) == '\n')
 					ptr++;
 				TMdmRcvSms sms;
 				sms.index = i;
@@ -66,13 +139,13 @@ TSmsBlock GetSmsFromModemByCMGR(CSerial* connector) {
 			}
 		}
 	}
-	return rtn; 
+	return rtn;
 }
 
-TSmsBlock GetSmsFromModemByCMGL(CSerial* connector) {
+CSmsDaemon::TSmsBlock CSmsDaemon::GetSmsFromModemByCMGL() {
 	TSmsBlock rtn;
 	char log[50 * 1024];
-	rtn.err = connector->SendExpect("AT+CMGL=4\r", answers, 3000, log, sizeof log);
+	rtn.err = m_Connector.SendExpect("AT+CMGL=4\r", answers, 3000, log, sizeof log);
 	if (rtn.err) {
 		fprintf(stderr, "+CMGL Error %d\n", rtn.err);
 		if (rtn.err > 0)
@@ -82,8 +155,8 @@ TSmsBlock GetSmsFromModemByCMGL(CSerial* connector) {
 		for (char* ptr = log; ptr && ((ptr = strstr(ptr, "CMGL:")) != NULL); ) {
 			ptr += 5; // skip CMGL:
 			TMdmRcvSms sms;
-			if (sscanf(ptr, "%d", &sms.index) > 0 && sms.index >=0) {
-				if ((ptr = strchr (ptr, '\r')) == NULL)
+			if (sscanf(ptr, "%d", &sms.index) > 0 && sms.index >= 0) {
+				if ((ptr = strchr(ptr, '\r')) == NULL)
 					break;
 				if (*(++ptr) == '\n')
 					ptr++;
@@ -98,139 +171,102 @@ TSmsBlock GetSmsFromModemByCMGL(CSerial* connector) {
 	return rtn;
 }
 
-TSmsBlock GetSmsFromModem(CSerial* connector) {
-	TSmsBlock rtn = GetSmsFromModemByCMGL (connector);
+CSmsDaemon::TSmsBlock CSmsDaemon::GetSmsFromModem() {
+	TSmsBlock rtn = GetSmsFromModemByCMGL();
 	if (rtn.IsError())
-		rtn = GetSmsFromModemByCMGR(connector);
+		rtn = GetSmsFromModemByCMGR();
 	return rtn;
 }
 
-
-int ProcessInSMS (CSerial* connector, CRecvSMSList& recvSMSProcessor){
-	TSmsBlock smsBlock = GetSmsFromModem(connector);
-	ProcessSmsBlock(smsBlock, recvSMSProcessor);
-	DelMdmSmsByBlock(connector, smsBlock);
-	int err = ProcessPDUQueue (recvSMSProcessor.GetCache());
-	if (!smsBlock.sms.empty() || err >0 ){
-		recvSMSProcessor.SaveCache();	
+int CSmsDaemon::ProcessSmsBlock(TSmsBlock& smsBlock) {
+	int rtn = 0;
+	for (TMdmRcvSms& sms: smsBlock.sms) {
+		if (!m_DirtySimSlots[sms.index]) {
+			m_RecvSMSProcessor.ProcessPDU(sms.pdu.c_str());
+			m_DirtySimSlots[sms.index] = true;
+		}
 	}
-	return 0;
+	return rtn;
+}
+
+bool CSmsDaemon::DelSMS(int smsIndex) {
+#ifdef __DO_NOT_DEL_SMS__
+	m_DirtySimSlots[smsIndex] = false;
+	return true;
+#else
+	char command[100];
+	sprintf(command, "at+cmgd=%d,0\r", smsIndex);
+
+	int err = m_Connector.SendExpect(command, answers, 2000);
+
+	if (err)
+		fprintf(stderr, "+CMGD error %d\n", err);
+	else
+		m_DirtySimSlots[smsIndex] = false;
+	return err;
+#endif
 }
 
 
-void ProcessOutSMS (CSerial* connector){
-    DIR*   dir = opendir(OUT_SMS_DIR);
-    if (!dir) {
-		fprintf (stderr, "can not open %s\n", OUT_SMS_DIR);
-        mkdir (OUT_SMS_DIR, 0777);
-        chmod (OUT_SMS_DIR, 0777);
+void CSmsDaemon::DelSMSBlock(vector <TMdmRcvSms> block) {
+	for (auto& sms : block) {
+		if (m_DirtySimSlots[sms.index])
+			DelSMS(sms.index);
+	}
+}
+
+void CSmsDaemon::DoProcessOutSMS() {
+	DIR* dir = opendir(m_OutSmsMailDir.c_str());
+	if (!dir) {
+		fprintf(stderr, "can not open %s\n", m_OutSmsMailDir.c_str());
+		mkdir(m_OutSmsMailDir.c_str(), 0777);
+		chmod(m_OutSmsMailDir.c_str(), 0777);
 		return;
-    };
+	};
 
-    struct dirent *entry;
-    while ( (entry = readdir(dir)) != NULL) {
-	if (*entry->d_name =='.')
-		continue;
-//        printf("%s\n", entry->d_name);
-	string fname(OUT_SMS_DIR);
-	fname += "/";
-	fname += entry->d_name;
-	FILE* f = fopen (fname.c_str(), "r");
-	if (f){
-		char buf [1024]="";
-		int len=0;
-		if (fgets(buf, sizeof (buf), f))
-			len = strlen (buf);
-		fclose(f);
+	struct dirent* entry;
+	while ((entry = readdir(dir)) != NULL) {
+		if (*entry->d_name == '.')
+			continue;
+		//        printf("%s\n", entry->d_name);
+		string fname(m_OutSmsMailDir);
+		fname += "/";
+		fname += entry->d_name;
+		FILE* f = fopen(fname.c_str(), "r");
+		if (f) {
+			char buf[1024] = "";
+			int len = 0;
+			if (fgets(buf, sizeof(buf), f))
+				len = strlen(buf);
+			fclose(f);
 
-		if (len > 4) {
-			if (buf[len - 1] == '\n')
-				buf[--len] = 0;
-			uint64_t llMsgID = 0;
-			char* sMsgID = strchr(buf, ':');
-			if (sMsgID) {
-				len = sMsgID - buf;
-				*sMsgID++ = 0;
-				sscanf(sMsgID, "%llX", &llMsgID);
-			}
+			if (len > 4) {
+				if (buf[len - 1] == '\n')
+					buf[--len] = 0;
 
-			//			printf ("%d <%s>\n", len, buf);
-
-			char cmd[200];
-			char log[1024];
-			memset(log, 0, sizeof(log));
-			sprintf(cmd, "AT+CMGS=%u\r", len / 2 - 1);
-			int err = connector->SendExpect(cmd, answers_go, 1000, log, sizeof(log));
-			if (!err){
-				string full_cmd(buf);
-	
-				full_cmd += "\x1a";
+				char cmd[200];
+				char log[1024];
 				memset(log, 0, sizeof(log));
-				err = connector->SendExpect(full_cmd.c_str(), answers, 20000, log, sizeof(log));
-			}
-			if (llMsgID){
-				ReportSendStatus (llMsgID, err);
-			}
+				sprintf(cmd, "AT+CMGS=%u\r", len / 2 - 1);
+				int err = m_Connector.SendExpect(cmd, answers_go, 1000, log, sizeof(log));
+				if (!err) {
+					string full_cmd(buf);
 
-			if (err) {
-				string outStr(string("Can not send SMS ") + entry->d_name);
-				if (!llMsgID)
-					LogError (err, outStr.c_str());
-				fprintf (stderr, "%s\n", outStr.c_str());
-				fprintf (stderr, "Error code:%d\n", err );
+					full_cmd += "\x1a";
+					memset(log, 0, sizeof(log));
+					err = m_Connector.SendExpect(full_cmd.c_str(), answers, 20000, log, sizeof(log));
+				}
+
+				if (err) {
+					string outStr(string("Can not send SMS ") + entry->d_name);
+					fprintf(stderr, "%s\n", outStr.c_str());
+					fprintf(stderr, "Error code:%d\n", err);
+				}
 			}
 		}
-	}
-	unlink (fname.c_str());
-    };
+		unlink(fname.c_str());
+	};
 
-    closedir(dir);
-}
+	closedir(dir);
 
-int mdm_daemon_loop (){
-//printf ("loop\n");
-	CRSSerial connector;
-	CRecvSMSList recvSMSProcessor;
-        recvSMSProcessor.Init (IN_SMS_CACHE_NAME, DEVICE);
-	recvSMSProcessor.m_sDestPreffix = IN_SMS_XML_DIR "/";
-        recvSMSProcessor.SaveCache();
-//	int err = connector.Open ("ttyUSB3");
-	connector.SetComParams (115200);
-
-	int err = connector.Open (DEVICE);
-	if (err <0){
-		LogError (err, "Unable to open modem");
-		fprintf (stderr, "Unable to open modem error: %d\n", err);
-		return 0;
-	}
-
-	err = connector.SendExpect("\r\rAT&F\r", answers);
-	if (err)
-		printf("AT&F error %d\n", err);
-
-	err = connector.SendExpect("ATE0\r", answers);
-	if (err)
-		printf("ATE error %d\n", err);
-
-	err = connector.SendExpect("AT+CMGF=0\r", answers);
-	if (err)
-		printf("AT+CMGF error %d\n", err);
-
-	err = connector.SendExpect("AT+CPMS=\"SM\",\"SM\",\"SM\"\r", answers);
-	if (err)
-		printf("AT+CPMS error %d\n", err);
-
-	for (;;){
-		int err = ProcessInSMS(&connector, recvSMSProcessor);
-		if (err < 0){
-			LogError (err, "Error processing incoming SMS");
-			printf ("Error processing incoming SMS: %d\n", err);
-		}
-		ProcessOutSMS (&connector);
-		Sleep(LOOP_SLEEP_MS);
-	}
-}
-
-bool test_8207(){
-	return !access (DEVICE_MDM, 0);
 }
