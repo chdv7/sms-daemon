@@ -43,7 +43,6 @@ enum CSerialType{
 #define SERIAL_IOCTL_SET_MODEM_READY_MASK        32UL
 #define SERIAL_IOCTL_SET_ORIGINATOR_IP           33UL
 #define SERIAL_IOCTL_SET_LISTEN_IP               34UL
-#define SERIAL_IOCTL_SET_ECHOCANCELLATION        35UL
 #define SERIAL_IOCTL_SET_DEFAULT_PORT			 36UL
 
 
@@ -129,8 +128,7 @@ public:
 	virtual      CSerial* AwaiteCall (unsigned long timeout=SERIAL_DEFTIMEOUTAWAITECALL);
 	virtual int  IoCtl(unsigned long code, unsigned long lParam=0, void* bparam=NULL );
 	bool		 IsConnected ();
-	int			 CopyFrom (CSerial& source);
-//	virtual void Sleep(unsigned long timeout);
+
 	virtual void ClearRX();
 	int          SendExpect (const char* send, const char** samples, unsigned long timeout=SERIAL_DEFTIMEOUTSENDEXPECT, char* log=NULL, long logSize=0);
 	int          SendExpect (LPBINRECORD send, LPBINRECORD* samples, unsigned long timeout=SERIAL_DEFTIMEOUTSENDEXPECT, LPBINRECORD log=NULL);
@@ -166,7 +164,5 @@ public:
 	int          GetUngetBufSize () {return UngetBufPtr;}
 	virtual     ~CSerial();
 };
-
-extern CSerial* NewConnector (const char* addres);
 
 #endif

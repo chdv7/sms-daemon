@@ -22,8 +22,7 @@ CRSSerial::CRSSerial()
 , DataBits (8)
 , BaudRate (115200UL)
 , ModemReadyMask (0)
-, EchoIndex (0)
-, IsEchoCancellation(false)
+
 #ifdef _WIN32
 , ComHandler (NULL)
 #else
@@ -350,8 +349,7 @@ int CRSSerial::Close(){
 		close(ComHandler);
 		ComHandler = -1;
 	}
-	SentEchoSample.clear();
-	EchoIndex = 0;
+
 	return CSerial::Close();
 }
 
@@ -553,10 +551,6 @@ int CRSSerial::IoCtl(unsigned long code, unsigned long lParam, void* bParam){
 		ModemReadyMask = lParam;
 		break;
 	
-	case SERIAL_IOCTL_SET_ECHOCANCELLATION:
-		IsEchoCancellation = lParam;
-		break;
-
 	default:
 		rtn = CSerial::IoCtl(code, lParam, bParam);
 	}
@@ -576,9 +570,4 @@ int CRSSerial::CheckModemReadyMask(){
 		LastError = (ComHandler?SERIAL_ERR_OK:SERIAL_ERR_NOTOPENED);
 
 	return LastError;
-}
-void CRSSerial::ClearRX(){
-	CSerial::ClearRX();
-	SentEchoSample.clear();
-	EchoIndex = 0;
 }
