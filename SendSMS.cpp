@@ -42,8 +42,8 @@ int GenSMS (const char* phoneNo, const char* dir){
 		int ch = getchar ();
 		if (ch == EOF )
 			break;
-		if (ch == '\n')
-			break;
+//		if (ch == '\n')
+//			break;
 		sms_text += ch;
 	}
 
