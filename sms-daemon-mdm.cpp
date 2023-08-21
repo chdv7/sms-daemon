@@ -86,31 +86,33 @@ void CSmsDaemon::Init() {
 }
 
 
-int  CSmsDaemon::OnCompleteSmsDecodeCB(XMLNode sms) {
+int CSmsDaemon::OnCompleteSmsDecodeCB(XMLNode sms) {
 	int rtn = 1;
 	string number = GetXMLStr(sms, "from", "");
 	string text = sms.getText();
 	for (auto& it : m_SmsInCallback) {
-		string replay;
-		int r = it.fn(number, text, replay, it.userdata);
-		if (r < 0)
-			rtn = 0;
-		if (r)
-			break;
+		if (it.fn) {
+			string replay;
+			int r = it.fn(number, text, replay, it.userdata);
+			if (r < 0)
+				rtn = 0;
+			if (r)
+				break;
+		}
 	}
 	return rtn;
 }
 int CSmsDaemon::Do() {
 	for (;;) {
-		DoProcessInSMS();
-		DoProcessOutSMS();
+		DoProcessInSmsBlock();
+		DoProcessOutSms();
 		Sleep(m_LoopDelay);
 	}
 	return 0;
 }
 
-void CSmsDaemon::DoProcessInSMS() {
-	TSmsBlock smsBlock = GetSmsFromModem();
+void CSmsDaemon::DoProcessInSmsBlock() {
+	TSmsBlock smsBlock = GetSmsBlockFromModem();
 	if (smsBlock.err < 0) {
 		LogError(smsBlock.err, "Error processing incoming SMS");
 		printf("Error processing incoming SMS: %d\n", smsBlock.err);
@@ -118,13 +120,13 @@ void CSmsDaemon::DoProcessInSMS() {
 
 	if (!smsBlock.sms.empty()) {
 		ProcessSmsBlock(smsBlock);
-		DelSMSBlock(smsBlock.sms);
+		DelSmsBlock(smsBlock.sms);
 		m_RecvSMSProcessor.SaveCache();
 	}
 	
 }
 
-CSmsDaemon::TSmsBlock CSmsDaemon::GetSmsFromModemByCMGR() {
+CSmsDaemon::TSmsBlock CSmsDaemon::GetSmsBlockByCMGR() {
 	TSmsBlock rtn;
 	for (int i = 0; i < 255; ++i) {
 		char command[20];
@@ -157,7 +159,7 @@ CSmsDaemon::TSmsBlock CSmsDaemon::GetSmsFromModemByCMGR() {
 	return rtn;
 }
 
-CSmsDaemon::TSmsBlock CSmsDaemon::GetSmsFromModemByCMGL() {
+CSmsDaemon::TSmsBlock CSmsDaemon::GetSmsBlockByCMGL() {
 	TSmsBlock rtn;
 	char log[50 * 1024];
 	rtn.err = m_Connector.SendExpect("AT+CMGL=4\r", answers, 3000, log, sizeof log);
@@ -186,10 +188,10 @@ CSmsDaemon::TSmsBlock CSmsDaemon::GetSmsFromModemByCMGL() {
 	return rtn;
 }
 
-CSmsDaemon::TSmsBlock CSmsDaemon::GetSmsFromModem() {
-	TSmsBlock rtn = GetSmsFromModemByCMGL();
+CSmsDaemon::TSmsBlock CSmsDaemon::GetSmsBlockFromModem() {
+	TSmsBlock rtn = GetSmsBlockByCMGL();
 	if (rtn.IsError())
-		rtn = GetSmsFromModemByCMGR();
+		rtn = GetSmsBlockByCMGR();
 	return rtn;
 }
 
@@ -204,7 +206,7 @@ int CSmsDaemon::ProcessSmsBlock(TSmsBlock& smsBlock) {
 	return rtn;
 }
 
-bool CSmsDaemon::DelSMS(int smsIndex) {
+bool CSmsDaemon::DelSms(int smsIndex) {
 #ifdef __DO_NOT_DEL_SMS__
 	m_DirtySimSlots[smsIndex] = false;
 	return true;
@@ -223,14 +225,14 @@ bool CSmsDaemon::DelSMS(int smsIndex) {
 }
 
 
-void CSmsDaemon::DelSMSBlock(vector <TMdmRcvSms> block) {
+void CSmsDaemon::DelSmsBlock(vector <TMdmRcvSms> block) {
 	for (auto& sms : block) {
 		if (m_DirtySimSlots[sms.index])
-			DelSMS(sms.index);
+			DelSms(sms.index);
 	}
 }
 
-void CSmsDaemon::DoProcessOutSMS() {
+void CSmsDaemon::DoProcessOutSms() {
 	DIR* dir = opendir(m_OutSmsMailDir.c_str());
 	if (!dir) {
 		fprintf(stderr, "can not open %s\n", m_OutSmsMailDir.c_str());

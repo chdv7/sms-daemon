@@ -35,14 +35,14 @@ class CSmsDaemon {
 
 	void Init();
 	int Do();
-	void DoProcessInSMS(); 
-	TSmsBlock GetSmsFromModem();
-	TSmsBlock GetSmsFromModemByCMGR();
-	TSmsBlock GetSmsFromModemByCMGL();
+	void DoProcessInSmsBlock(); 
+	TSmsBlock GetSmsBlockFromModem();
+	TSmsBlock GetSmsBlockByCMGR();
+	TSmsBlock GetSmsBlockByCMGL();
 	int ProcessSmsBlock(TSmsBlock& smsBlock);
-	void DoProcessOutSMS();
-	bool DelSMS(int index);
-	void DelSMSBlock(vector <TMdmRcvSms> sms);
+	void DoProcessOutSms();
+	bool DelSms(int index);
+	void DelSmsBlock(vector <TMdmRcvSms> sms);
 	int  OnCompleteSmsDecodeCB(XMLNode sms);
 public:
 	CSmsDaemon() {}
