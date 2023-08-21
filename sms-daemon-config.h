@@ -8,7 +8,6 @@
 #define DATA_PID_PATH       	"/var/run/sms-daemon.pid"
 #define OUT_SMS_DIR         	"/var/spool/sms/outsms"
 #define START_DELAY				2000
-//#define DEVICE 			"ttyMdm0"
 #define SMS_TMP_DIR		"/tmp/sms-daemon"
 #define SMS_LOG_FILE	        SMS_TMP_DIR"/Log"
 #define IN_SMS_XML_DIR          SMS_TMP_DIR"/ReceivedSMS"

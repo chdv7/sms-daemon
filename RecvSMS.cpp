@@ -165,7 +165,7 @@ static wstring decode7bit (const char* text, int maxOutLen, int firstGSMChar ){
 
 
 
-CRecvSMS::CRecvSMS(void)
+CRecvSMSPart::CRecvSMSPart(void)
 : m_nPartNo(0)
 , m_nParts(0)
 , m_nRefNr(0)
@@ -235,7 +235,7 @@ static int GetPhone(const char* s, std::wstring* phone, bool isSMSC)
 
 
 
-CRecvSMS::~CRecvSMS(void)
+CRecvSMSPart::~CRecvSMSPart(void)
 {
 }
 
@@ -280,7 +280,7 @@ string GetTimeStamp (const char* s ){
 
 }
 
-int CRecvSMS::ProcessRawText(std::string rawText){
+int CRecvSMSPart::ProcessRecvPDU(std::string rawText){
 	m_RawText = rawText;
 	const char* sms = rawText.c_str();
 
@@ -382,7 +382,7 @@ int CRecvSMS::ProcessRawText(std::string rawText){
 }
 
 
-CRecvSMSList::CRecvSMSList()
+CRecvSMSProcessor::CRecvSMSProcessor()
 : m_sDestPreffix ("")
 , m_bAddDebugInfo(false)
 , m_nSmsProcessed(0)
@@ -393,11 +393,11 @@ CRecvSMSList::CRecvSMSList()
 }
 
 
-CRecvSMSList::~CRecvSMSList(){
+CRecvSMSProcessor::~CRecvSMSProcessor(){
 	SaveCache();
 }
 
-int CRecvSMSList::Init(string cachePath, string interfaceID)
+int CRecvSMSProcessor::Init(string cachePath, string interfaceID)
 {
 	m_InterfaceID = interfaceID;
 	if (!cachePath.empty())
@@ -427,16 +427,16 @@ int CRecvSMSList::Init(string cachePath, string interfaceID)
 	return 0;
 }
 
-int CRecvSMSList::ProcessPDU(const char*  pdu)
+int CRecvSMSProcessor::ProcessPDU(const char*  pdu)
 {
-	CRecvSMS sms;
-//			sms.m_Index = smsSimIndex;
-	sms.ProcessRawText(pdu);
+	CRecvSMSPart sms;
+	sms.ProcessRecvPDU(pdu);
 	XMLNode xSMS = sms.GenXML(m_bAddDebugInfo);
 	m_nPartsProcessed++;
 
 	if (::GetXMLInt(xSMS, "nparts", 0) <= 1) {
-		SaveSMS(xSMS);
+		if (!m_OnSmsCallBackPtr || (m_OnSmsCallBackPtr(xSMS) > 0))
+			SaveSMS(xSMS);
 	}
 	else {
 		ProcessPart(xSMS);
@@ -446,7 +446,7 @@ int CRecvSMSList::ProcessPDU(const char*  pdu)
 
 
 
-XMLNode CRecvSMS::GenXML(bool debugFlag)
+XMLNode CRecvSMSPart::GenXML(bool debugFlag)
 {
 	XMLNode xSMS = XMLNode::createXMLTopNode("SMS");
 	XMLNode xPart = xSMS;
@@ -496,7 +496,7 @@ XMLNode CRecvSMS::GenXML(bool debugFlag)
 	return xSMS;
 }
 
-int CRecvSMSList::SaveSMS(XMLNode sms)
+int CRecvSMSProcessor::SaveSMS(XMLNode sms)
 {
 	static unsigned short cnt=0;
 	static time_t last_t = 0;
@@ -521,7 +521,7 @@ int CRecvSMSList::SaveSMS(XMLNode sms)
 	return 0;
 }
 
-int CRecvSMSList::ProcessPart(XMLNode xNewSMS)
+int CRecvSMSProcessor::ProcessPart(XMLNode xNewSMS)
 {
 	const char* sId = xNewSMS.getAttribute ("id");
 	if (!sId){
@@ -566,7 +566,8 @@ int CRecvSMSList::ProcessPart(XMLNode xNewSMS)
 						x.deleteNodeContent();
 				}
 			}
-			SaveSMS(xMainSMS);
+			if ( !m_OnSmsCallBackPtr || (m_OnSmsCallBackPtr(xMainSMS) > 0))
+				SaveSMS(xMainSMS);
 			xMainSMS.deleteNodeContent();
 		}
 	}
@@ -574,6 +575,6 @@ int CRecvSMSList::ProcessPart(XMLNode xNewSMS)
 }
 
 
-void CRecvSMSList::SaveCache(void){
+void CRecvSMSProcessor::SaveCache(void){
 	m_xCache.writeToFile(m_sCachePath.c_str());
 }

@@ -56,9 +56,9 @@ int CSmsDaemon::Go() {
 	return Do();
 }
 void CSmsDaemon::Init() {
-
 	m_RecvSMSProcessor.Init(m_CachePath, m_DeviceName);
 	m_RecvSMSProcessor.m_sDestPreffix = m_InSmsXmlDir + "/";
+	m_RecvSMSProcessor.SetSmsCallBack([this](XMLNode sms) { return OnCompleteSmsDecodeCB(sms); });
 	m_RecvSMSProcessor.SaveCache();
 	int err = m_Connector.Open(m_DeviceName.c_str());
 	if (err < 0)
@@ -85,6 +85,21 @@ void CSmsDaemon::Init() {
 
 }
 
+
+int  CSmsDaemon::OnCompleteSmsDecodeCB(XMLNode sms) {
+	int rtn = 1;
+	string number = GetXMLStr(sms, "from", "");
+	string text = sms.getText();
+	for (auto& it : m_SmsInCallback) {
+		string replay;
+		int r = it.fn(number, text, replay, it.userdata);
+		if (r < 0)
+			rtn = 0;
+		if (r)
+			break;
+	}
+	return rtn;
+}
 int CSmsDaemon::Do() {
 	for (;;) {
 		DoProcessInSMS();

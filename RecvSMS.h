@@ -3,17 +3,19 @@
 #include <list>
 #include <map>
 #include "xmlParser.h"
+#include <functional>
 
 using namespace std;
 
 #define MAX_SMS_TIME		(15*24*3600) // 15 days
 
-class CRecvSMS
+
+class CRecvSMSPart
 {
 public:
-	CRecvSMS(void);
-	~CRecvSMS(void);
-	int ProcessRawText(std::string rawText);
+	CRecvSMSPart(void);
+	~CRecvSMSPart(void);
+	int ProcessRecvPDU(std::string rawText);
 	std::string m_RawText;
 //	int         m_Index;
 	std::wstring m_SMSC;
@@ -26,21 +28,22 @@ public:
 	XMLNode GenXML(bool debugFlag=false);
 };
 
-class CRecvSMSList {
+class CRecvSMSProcessor {
 public:
-	CRecvSMSList();
-	~CRecvSMSList();
+	CRecvSMSProcessor();
+	~CRecvSMSProcessor();
 	string m_InterfaceID;
 	std::string m_sDestPreffix;
 	bool m_bAddDebugInfo;
 	int m_nSmsProcessed;
 	int m_nPartsProcessed;
-
 	int Init(string cachePath, string interfaceID);
 	int ProcessPDU(const char*  pdu);
 	void SaveCache (void);
 	XMLNode GetCache () {return m_xCache; }
+	void SetSmsCallBack(std::function<int(XMLNode)> fn) { m_OnSmsCallBackPtr = fn; }
 protected:
+	std::function<int(XMLNode)> m_OnSmsCallBackPtr{nullptr}; // returns  rtn > 0 sms will be saved after the call, rtn <= 0 - SMS will not be saved
 	XMLNode m_xCache;
 	int SaveSMS(XMLNode sms);
 	int ProcessPart(XMLNode sms);

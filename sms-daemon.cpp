@@ -27,7 +27,6 @@ void LogError(int code, const char* text) {
 
 int main(int argc, char *argv[])
 {
-
         mkdir (SMS_TMP_DIR, 0777);
         chmod (SMS_TMP_DIR, 0777);
         mkdir (OUT_SMS_DIR, 0777);
@@ -84,5 +83,3 @@ int main(int argc, char *argv[])
 
 	return 0;
 }
-
-
