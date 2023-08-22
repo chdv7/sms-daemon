@@ -81,7 +81,5 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	
-
 	return GenSMS (phone_No, out_dir);
 }

@@ -75,6 +75,7 @@ int main(int argc, char *argv[])
 	try {
 		CSmsDaemon daemon;
 		daemon.Setup();
+//		daemon.RegisterInSmsCallBack([](const std::string number, const std::string text, std::string& replay, void* userdata) { replay = "OK " + text; return 0; });
 		int err = daemon.Go();
 	}
 	catch (CSmsDaemon::SmsDaemonError& e) {

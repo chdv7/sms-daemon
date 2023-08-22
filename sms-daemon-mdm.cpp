@@ -88,18 +88,35 @@ void CSmsDaemon::Init() {
 
 int CSmsDaemon::OnCompleteSmsDecodeCB(XMLNode sms) {
 	int rtn = 1;
+
 	string number = GetXMLStr(sms, "from", "");
-	string text = sms.getText();
-	for (auto& it : m_SmsInCallback) {
+	int r = 0;
+	for (auto& it : m_SmsInXMLCallback) {
 		if (it.fn) {
 			string replay;
-			int r = it.fn(number, text, replay, it.userdata);
-			if (!replay.empty())
+			int r = it.fn(sms, replay, it.userdata);
+			if (!replay.empty()) {
 				SendSms(number, replay);
+			}
 			if (r < 0)
-				rtn = 0;
+				rtn = r;
 			if (r)
 				break;
+		}
+	}
+	if (!r && !m_SmsInCallback.empty()){
+		string text = sms.getText();
+		for (auto& it : m_SmsInCallback) {
+			if (it.fn) {
+				string replay;
+				int r = it.fn(number, text, replay, it.userdata);
+				if (!replay.empty())
+					SendSms(number, replay);
+				if (r < 0)
+					rtn = 0;
+				if (r)
+					break;
+			}
 		}
 	}
 	return rtn;

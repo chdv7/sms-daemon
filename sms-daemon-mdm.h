@@ -7,6 +7,7 @@
 #include "RecvSMS.h"
 
 typedef int (*SmsCallBack) (const std::string number, const std::string text, std::string& replay, void* userdata);
+typedef int (*SmsCallBackXml) (XMLNode sms, std::string& replay, void* userdata);
 class CSmsDaemon {
 	struct TMdmRcvSms {
 		std::string pdu;
@@ -24,6 +25,14 @@ class CSmsDaemon {
 		void*       userdata;
 	};
 	std::vector <TCallBackDescriptor> m_SmsInCallback;
+
+	struct TCallBackXMLDescriptor {
+		TCallBackXMLDescriptor(SmsCallBackXml fn_, void* userdata_) : fn(fn_), userdata(userdata_) {}
+		SmsCallBackXml fn;
+		void* userdata;
+	};
+	std::vector <TCallBackXMLDescriptor> m_SmsInXMLCallback;
+
 	std::unordered_map <int, bool> m_DirtySimSlots;
 	std::string  m_DeviceName{ DEVICE };
 	std::string  m_CachePath { IN_SMS_CACHE_NAME };
@@ -51,6 +60,7 @@ public:
 	void Setup();
 	int Go();
 	void RegisterInSmsCallBack(SmsCallBack fn, void* userdata = nullptr) { m_SmsInCallback.emplace_back(fn, userdata); }
+	void RegisterInSmsCallBack(SmsCallBackXml fn, void* userdata = nullptr) { m_SmsInXMLCallback.emplace_back(fn, userdata); }
 	struct SmsDaemonError {
 		SmsDaemonError(int code = 0, std::string explanation = std::string()) : ErrorCode(code), Verbose(explanation) {}
 		std::string Verbose;
