@@ -10,6 +10,7 @@
 #include <iostream>
 
 #include "ut.h"
+#include "PduSMS.h"
 #include "sms-daemon-mdm.h"
 #include "sms-daemon.h"
 
@@ -46,7 +47,6 @@ static bool const HexDecChars[128] = {
 bool isHexDecChar(char chr) {
 	return chr & 0x80 ? false : HexDecChars[(int)chr];
 }
-
 
 void CSmsDaemon::Setup() {
 	return;
@@ -94,6 +94,8 @@ int CSmsDaemon::OnCompleteSmsDecodeCB(XMLNode sms) {
 		if (it.fn) {
 			string replay;
 			int r = it.fn(number, text, replay, it.userdata);
+			if (!replay.empty())
+				SendSms(number, replay);
 			if (r < 0)
 				rtn = 0;
 			if (r)
@@ -102,10 +104,11 @@ int CSmsDaemon::OnCompleteSmsDecodeCB(XMLNode sms) {
 	}
 	return rtn;
 }
+
 int CSmsDaemon::Do() {
 	for (;;) {
 		DoProcessInSmsBlock();
-		DoProcessOutSms();
+		DoProcessOutSmsFolder();
 		Sleep(m_LoopDelay);
 	}
 	return 0;
@@ -232,7 +235,37 @@ void CSmsDaemon::DelSmsBlock(vector <TMdmRcvSms> block) {
 	}
 }
 
-void CSmsDaemon::DoProcessOutSms() {
+int CSmsDaemon::SendSmsPart(std::string pdu) {
+	int err = 0;
+	if (pdu.size() > 4) {
+		for (auto it = pdu.begin(); it != pdu.end(); ++it) {
+			if (!isHexDecChar(*it)) {
+				pdu.erase(it, pdu.end());
+				break;
+			}
+		}
+
+
+		char cmd[200];
+		char log[1024];
+		memset(log, 0, sizeof(log));
+		sprintf(cmd, "AT+CMGS=%u\r", pdu.length() / 2 - 1);
+		err = m_Connector.SendExpect(cmd, answers_go, 1000, log, sizeof(log));
+		if (!err) {
+			pdu += "\x1a";
+			memset(log, 0, sizeof(log));
+			err = m_Connector.SendExpect(pdu.c_str(), answers, 20000, log, sizeof(log));
+		}
+		if (!err)
+			m_Connector.Puts("\r\r", 10);
+	}
+	else {
+		err = -1;
+	}
+	return err;
+}
+
+void CSmsDaemon::DoProcessOutSmsFolder() {
 	DIR* dir = opendir(m_OutSmsMailDir.c_str());
 	if (!dir) {
 		fprintf(stderr, "can not open %s\n", m_OutSmsMailDir.c_str());
@@ -257,28 +290,11 @@ void CSmsDaemon::DoProcessOutSms() {
 				len = strlen(buf);
 			fclose(f);
 
-			if (len > 4) {
-				if (buf[len - 1] == '\n')
-					buf[--len] = 0;
-
-				char cmd[200];
-				char log[1024];
-				memset(log, 0, sizeof(log));
-				sprintf(cmd, "AT+CMGS=%u\r", len / 2 - 1);
-				int err = m_Connector.SendExpect(cmd, answers_go, 1000, log, sizeof(log));
-				if (!err) {
-					string full_cmd(buf);
-
-					full_cmd += "\x1a";
-					memset(log, 0, sizeof(log));
-					err = m_Connector.SendExpect(full_cmd.c_str(), answers, 20000, log, sizeof(log));
-				}
-
-				if (err) {
-					string outStr(string("Can not send SMS ") + entry->d_name);
-					fprintf(stderr, "%s\n", outStr.c_str());
-					fprintf(stderr, "Error code:%d\n", err);
-				}
+			int err = SendSmsPart(buf);
+			if (err) {
+				string outStr(string("Can not send SMS ") + entry->d_name);
+				fprintf(stderr, "%s\n", outStr.c_str());
+				fprintf(stderr, "Error code:%d\n", err);
 			}
 		}
 		unlink(fname.c_str());
@@ -286,4 +302,15 @@ void CSmsDaemon::DoProcessOutSms() {
 
 	closedir(dir);
 
+}
+
+int  CSmsDaemon::SendSms(std::string number, std::string text, int flags) {
+
+	COutPduSms sms_processor(number.c_str(), text.c_str());
+	TOutPduBlock pdu_block = sms_processor.ParseText();
+
+	for (auto& it : pdu_block) {
+		SendSmsPart(it);
+	}
+	return 0;
 }

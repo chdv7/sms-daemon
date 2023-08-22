@@ -40,7 +40,9 @@ class CSmsDaemon {
 	TSmsBlock GetSmsBlockByCMGR();
 	TSmsBlock GetSmsBlockByCMGL();
 	int ProcessSmsBlock(TSmsBlock& smsBlock);
-	void DoProcessOutSms();
+	void DoProcessOutSmsFolder();
+	int SendSmsPart(std::string pdu);
+	int  SendSms(std::string number, std::string text, int flags = 0);
 	bool DelSms(int index);
 	void DelSmsBlock(vector <TMdmRcvSms> sms);
 	int  OnCompleteSmsDecodeCB(XMLNode sms);

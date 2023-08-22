@@ -139,7 +139,7 @@ static const char XML_utf8ByteTable[256] =
 
 
 
-CPduSMS::CPduSMS(void)
+COutPduSms::COutPduSms(void)
 : m_bForceUDH(false)
 , m_bFlash(false)
 , m_bRRq(false)
@@ -150,7 +150,7 @@ CPduSMS::CPduSMS(void)
 {
 }
 
-CPduSMS::CPduSMS (const char* phone, const wchar_t* text)
+COutPduSms::COutPduSms (const char* phone, const wchar_t* text)
 : m_sPone(phone)
 , m_sText(text)
 , m_bForceUDH(false)
@@ -164,7 +164,7 @@ CPduSMS::CPduSMS (const char* phone, const wchar_t* text)
 
 }
 
-CPduSMS::CPduSMS (const char* phone, const char* text, bool isUTF8)
+COutPduSms::COutPduSms (const char* phone, const char* text, bool isUTF8)
 : m_sPone(phone)
 , m_bForceUDH(false)
 , m_bFlash(false)
@@ -178,11 +178,11 @@ CPduSMS::CPduSMS (const char* phone, const char* text, bool isUTF8)
 }
 
 
-CPduSMS::~CPduSMS(void)
+COutPduSms::~COutPduSms(void)
 {
 }
 
-void CPduSMS::AddText(const char* text, bool isUTF8) {
+void COutPduSms::AddText(const char* text, bool isUTF8) {
 	if (isUTF8) {
 		m_sText = ::UTF8ToUnicode(text);
 	}
@@ -242,7 +242,7 @@ static string EncodeHexDec(string text){
 }
 
 
-string CPduSMS::MakeSmsSubmitHeader(bool isHasUDH, PDU_EncodingScheme encodingScheme)
+string COutPduSms::MakeSmsSubmitHeader(bool isHasUDH, PDU_EncodingScheme encodingScheme)
 {
 	string phoneNo = ClearPhoneNo (m_sPone);
 	string hdr;
@@ -313,7 +313,7 @@ static string encode7bit (const wchar_t* text, int maxtextlen ){
 }
 
 
-TSmsList CPduSMS::ParseText(void)
+TOutPduBlock COutPduSms::ParseText(void)
 {
 	// Define encoding mode 
 
@@ -383,7 +383,7 @@ TSmsList CPduSMS::ParseText(void)
 		(unsigned char)nParts, 0
 	};
 
-	TSmsList outList;
+	TOutPduBlock outList;
 
 	for (int iPart=0; iPart<nParts; ++iPart){
 		string smsText = smsPartHdr;

@@ -48,11 +48,11 @@ int GenSMS (const char* phoneNo, const char* dir){
 	}
 
 
-	CPduSMS sms_processor ( phoneNo, sms_text.c_str());
-	TSmsList pdu_list = sms_processor.ParseText();
+	COutPduSms sms_processor ( phoneNo, sms_text.c_str());
+	TOutPduBlock pdu_list = sms_processor.ParseText();
 	
-	for (auto it = pdu_list.begin(); it != pdu_list.end(); it++){
-		int err = SaveSMS (it->c_str(), dir);
+	for (auto& it : pdu_list){
+		int err = SaveSMS (it.c_str(), dir);
 		if (err < 0)
 			printf ("Saving error %d\n", err);
 	}
