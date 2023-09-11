@@ -7,7 +7,7 @@ DAEMON_SOURCES_CPP = 	sms-daemon.cpp \
 		PduSMS.cpp \
 		serial.cpp \
 		rsserial.cpp \
-	    xmlParser.cpp \
+		xmlParser.cpp \
 		RecvSMS.cpp \
 		ut.cpp       
 
