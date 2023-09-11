@@ -4,9 +4,10 @@ CPPFLAGS += -Wall -std=c++11
 DAEMON_EXE  = sms-daemon
 DAEMON_SOURCES_CPP = 	sms-daemon.cpp \
 		sms-daemon-mdm.cpp \
-	        serial.cpp \
+		PduSMS.cpp \
+		serial.cpp \
 		rsserial.cpp \
-	        xmlParser.cpp \
+	    xmlParser.cpp \
 		RecvSMS.cpp \
 		ut.cpp       
 
