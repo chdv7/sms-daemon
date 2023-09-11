@@ -1,8 +1,8 @@
 #pragma once
-#include "xmlParser.h"
 #include <inttypes.h>
 #include <unistd.h>
 
+#include "xmlParser.h"
 
 const char* GetXMLStr (XMLNode& n, const char* name, const char*def);
 int GetXMLInt (XMLNode& n, const char* name, int def);

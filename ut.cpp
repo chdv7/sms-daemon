@@ -1,9 +1,9 @@
-#include "ut.h"
 #include <stdio.h>
 #include <ctype.h>
 #include <string.h>
 #include <sys/timeb.h>
 
+#include "ut.h"
 
 static int strnicmp (const char* s1, const char* s2, int maxlen){
 	for (;maxlen>0;--maxlen, ++s1, ++s2){

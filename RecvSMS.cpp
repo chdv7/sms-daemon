@@ -1,9 +1,10 @@
-#include "RecvSMS.h"
 #include <stdio.h>
 #include <string.h>
 #include <arpa/inet.h>
 #include <ctype.h>
+
 #include "ut.h"
+#include "RecvSMS.h"
 
 #define ASSERT(a)
 
@@ -410,7 +411,7 @@ int CRecvSMSProcessor::Init(string cachePath, string interfaceID)
 	m_LastProcessedItemID = 0;
 	const char*  psID = m_xCache.getAttribute("LastProcessedID");
 	if (psID) {
-		sscanf(psID, "%llX", &m_LastProcessedItemID);
+		sscanf(psID, "%lX", &m_LastProcessedItemID);
 	}
 // Cleanup cache
 	time_t t = time (NULL);

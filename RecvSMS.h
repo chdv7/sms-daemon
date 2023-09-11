@@ -2,8 +2,8 @@
 #include <string>
 #include <list>
 #include <map>
-#include "xmlParser.h"
 #include <functional>
+#include "xmlParser.h"
 
 using namespace std;
 

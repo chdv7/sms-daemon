@@ -1,7 +1,8 @@
 #ifndef __SERIALRS_H__
 #define __SERIALRS_H__
-#include "serial.h"
 #include <vector>
+
+#include "serial.h"
 
 enum CFlowControl{
 	flowControlNone=0,

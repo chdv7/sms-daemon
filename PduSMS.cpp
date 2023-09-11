@@ -1,10 +1,11 @@
-#include "PduSMS.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <memory.h>
 #include <arpa/inet.h>
 #include <time.h>
+
+#include "PduSMS.h"
 
 typedef unsigned short Uchar;
 #pragma pack(push, 1)

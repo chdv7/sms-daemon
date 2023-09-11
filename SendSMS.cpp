@@ -1,10 +1,9 @@
-#include "PduSMS.h"
 #include <stdio.h>
 #include <chrono>
 #include <sys/timeb.h>
 #include <unistd.h>
 
-
+#include "PduSMS.h"
 
 #define OUT_SMS_DIR      "/var/spool/sms/outsms"
 
