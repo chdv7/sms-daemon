@@ -38,13 +38,14 @@ int SaveSMS (const char* pdu, const char* dir){
 
 int GenSMS (const char* phoneNo, const char* dir){
 	string sms_text;
+	sms_text.reserve(256);
 	for (;;){
 		int ch = getchar ();
 		if (ch == EOF )
 			break;
 //		if (ch == '\n')
 //			break;
-		sms_text += ch;
+		sms_text += (char)ch;
 	}
 
 
