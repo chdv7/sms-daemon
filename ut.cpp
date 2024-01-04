@@ -62,18 +62,18 @@ int UnicodeToUTF8 (char* d, const wchar_t* src, size_t sz){
 
 		switch (code_length){  
 		case 1:         // *src ( 7 bit) 000000000zzzzzzz
-			*d = (char)*src;				  // 0zzzzzzz
+			*d    = (char)*src;				  // 0zzzzzzz
 			break;
 
 		case 2:			// *src (11 bit) 00000yyyyyzzzzzz
-			*d     = (*src>>6)         | 0xc0; // 110yyyyy
-			*(d+1) = (*src     &0x003f)| 0x80; // 10zzzzzz
+			*d     = (char) ((*src>>6)         | 0xc0); // 110yyyyy
+			*(d+1) = (char) ((*src     &0x003f)| 0x80); // 10zzzzzz
 			break;
 
 		case 3:			// *src (16 bit) xxxxyyyyyyzzzzzz
-			*d     =  (*src>>12)        | 0xe0; // 1110xxxx
-			*(d+1) = ((*src>>6) &0x003f)| 0x80; // 10yyyyyy
-			*(d+2) =  (*src     &0x003f)| 0x80; // 10zzzzzz
+			*d     = (char)((*src>>12)        | 0xe0); // 1110xxxx
+			*(d+1) = (char)(((*src>>6) &0x003f)| 0x80); // 10yyyyyy
+			*(d+2) = (char)((*src      &0x003f)| 0x80); // 10zzzzzz
 			break;
 
 		}

@@ -302,9 +302,7 @@ void CSmsDaemon::DoProcessOutSmsFolder() {
 		FILE* f = fopen(fname.c_str(), "r");
 		if (f) {
 			char buf[1024] = "";
-			int len = 0;
-			if (fgets(buf, sizeof(buf), f))
-				len = strlen(buf);
+			fgets(buf, sizeof(buf), f);
 			fclose(f);
 
 			int err = SendSmsPart(buf);

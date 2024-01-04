@@ -246,7 +246,7 @@ int CSerial::Gets (char* buf, unsigned long size, int separator, unsigned long t
 				break;
 			if (chr == separator)
 				break;
-			*(buf++) = chr;
+			*(buf++) = (char) chr;
 		}
 	}
 	*buf = '\0';
@@ -268,7 +268,7 @@ int CSerial::Gets (char* buf, unsigned long size, const char* separators, unsign
 					break;
 			if (*sPtr)
 				break;
-			*(buf++) = chr;
+			*(buf++) = (char)chr;
 		}
 	}
 	*buf = '\0';
@@ -284,7 +284,7 @@ int CSerial::GetBlock (char* buf, unsigned long size, unsigned long timeout){
 			if (chr<0){
 				break;
 			}
-			*buf++ = chr;
+			*buf++ = (char)chr;
 			size--;
 		}
 	}
@@ -304,7 +304,7 @@ int  CSerial::GetBlockEx (char* buf, unsigned long size, unsigned long timeout){
 			LastError=chr;
 			break;
 		}
-		*buf++ = chr;
+		*buf++ = (char)chr;
 		size--;
 	}
 	int recvd_size = buf-buf_;
@@ -396,7 +396,7 @@ int CSerial::SendExpect (const char* send, const char** expect, unsigned long ti
 			}
 
 			if (log && (logSize > 0)){
-				*(log++) = chr;
+				*(log++) = (char)chr;
 				*log = '\0';
 				logSize--;
 			}
@@ -468,7 +468,7 @@ int CSerial::SendExpect (LPBINRECORD send, LPBINRECORD* expect, unsigned long ti
 				break;
 			}
 			if (log && logSize > 0){
-				*(log++) = chr;
+				*(log++) = (char)chr;
 				logRec->Len++;
 				logSize--;
 			}
@@ -602,7 +602,7 @@ int CSerial::Ungetc (int chr){
 	if (!UngetBufPtr)
 		return LastError=SERIAL_ERR_UNGET_OVER;
 
-	UngetBuf[--UngetBufPtr] = chr;
+	UngetBuf[--UngetBufPtr] = (char)chr;
 	return SERIAL_ERR_OK;
 }
 

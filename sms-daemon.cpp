@@ -72,15 +72,17 @@ int main(int argc, char *argv[])
 			Sleep(START_DELAY);
 		}
 	}
+	int err = 1;
 	try {
 		CSmsDaemon daemon;
 		daemon.Setup();
 //		daemon.RegisterInSmsCallBack([](const std::string number, const std::string text, std::string& replay, void* userdata) { replay = "OK " + text; return 0; });
-		int err = daemon.Go();
+		err = daemon.Go();
 	}
 	catch (CSmsDaemon::SmsDaemonError& e) {
 		std::cerr << "Critical error. Code: " << e.ErrorCode << " \"" << e.Verbose << "\"" << std::endl;
+		err = 1;
 	}
 
-	return 0;
+	return err;
 }

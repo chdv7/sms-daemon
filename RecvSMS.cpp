@@ -81,7 +81,7 @@ static int TextToBin (const char* text, int maxlen, unsigned char* bin){
 		int bin1=-1;
 		if (sscanf (text, "%02X",&bin1 )!=1 || bin1<0)
 			return -1;
-		bin[i] = bin1;
+		bin[i] = (unsigned char)bin1;
 	}
 	return bLen;
 } 
@@ -119,12 +119,12 @@ static string decode7BitStep (const char* text, int len){
 		if (chr ==0){  // @ character will be encoded as code 0x80 higest bit will be cutted at decode7bit
 			chr= 0x80;
 		}
-		out += chr;
+		out += (char)chr;
 	}
 	return out;
 }
 
-static wstring decode7bit (const char* text, int maxOutLen, int firstGSMChar ){
+static wstring decode7bit (const char* text, int maxOutLen, char firstGSMChar ){
 	string sgsmCode;
 	sgsmCode.reserve (maxOutLen+3);
 	if (firstGSMChar >=0)
@@ -351,7 +351,7 @@ int CRecvSMSPart::ProcessRecvPDU(std::string rawText){
 							sms+=2;
 						}
 				}
-				m_sText += ::decode7bit(sms, udl, first_chr_of_7bitSMS);
+				m_sText += ::decode7bit(sms, udl, (char)first_chr_of_7bitSMS);
 			}
 			break;
 		case 0x04:
@@ -366,7 +366,7 @@ int CRecvSMSPart::ProcessRecvPDU(std::string rawText){
 			{
 				int udl16bit = udl/2;
 				for (int i=0; i < udl16bit; ++i){
-					wchar_t wchr;
+					uint16_t wchr;
 					int sz = TextToBin (sms, 2, (unsigned char*)&wchr);
 					if (sz !=2)
 						break;

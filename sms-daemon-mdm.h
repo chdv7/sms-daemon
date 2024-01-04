@@ -62,7 +62,7 @@ public:
 	void RegisterInSmsCallBack(SmsCallBack fn, void* userdata = nullptr) { m_SmsInCallback.emplace_back(fn, userdata); }
 	void RegisterInSmsCallBack(SmsCallBackXml fn, void* userdata = nullptr) { m_SmsInXMLCallback.emplace_back(fn, userdata); }
 	struct SmsDaemonError {
-		SmsDaemonError(int code = 0, std::string explanation = std::string()) : ErrorCode(code), Verbose(explanation) {}
+		SmsDaemonError(int code = 0, std::string explanation = std::string()) : Verbose(explanation), ErrorCode(code){}
 		std::string Verbose;
 		int			ErrorCode;
 	};
