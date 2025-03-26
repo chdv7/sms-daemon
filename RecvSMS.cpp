@@ -2,6 +2,7 @@
 #include <string.h>
 #include <arpa/inet.h>
 #include <ctype.h>
+#include <time.h>
 
 #include "ut.h"
 #include "RecvSMS.h"
