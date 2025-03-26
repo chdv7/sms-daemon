@@ -302,12 +302,9 @@ void CSmsDaemon::DoProcessOutSmsFolder() {
 		FILE* f = fopen(fname.c_str(), "r");
 		if (f) {
 			char buf[1024] = "";
-			int len = 0;
-			if (fgets(buf, sizeof(buf), f))
-				len = strlen(buf);
+			fgets(buf, sizeof(buf), f);
 			fclose(f);
-
-			int err = SendSmsPart(buf);
+			int err = strlen(buf) ? SendSmsPart(buf) : -100;
 			if (err) {
 				string outStr(string("Can not send SMS ") + entry->d_name);
 				fprintf(stderr, "%s\n", outStr.c_str());

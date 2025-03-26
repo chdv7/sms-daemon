@@ -331,15 +331,16 @@ TOutPduBlock COutPduSms::ParseText(void)
 		bool _8bitFound = false;
 		bool _16bitFound = false;
 
-		for (wstring::iterator it = sText.begin() ;it != sText.end(); ++it){
-			if (*it&0xff00){
+		for (auto chr : sText){
+			if (chr&0xff00){
 				_16bitFound = true;
 				break;
 			}
-			unsigned char code = lookup7Bit[*it];
-			if (code==0xff){
+//          chr <=255
+			auto code = lookup7Bit[chr];
+			if (code==0xff)
 				_8bitFound = true;
-			}
+
 			if (!_8bitFound){
 				if (code >=0x80){
 					sms7BitText += 0x1b; // Add ESC
