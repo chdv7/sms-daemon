@@ -1,5 +1,6 @@
-CFLAGS   += -Wall
-CPPFLAGS += -Wall -std=c++11
+CFLAGS   += -Wall -g
+CPPFLAGS += -Wall -std=c++17 -g
+LDFLAGS=
 
 DAEMON_EXE  = sms-daemon
 DAEMON_SOURCES_CPP = 	sms-daemon.cpp \

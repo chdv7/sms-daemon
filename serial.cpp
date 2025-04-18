@@ -121,7 +121,7 @@ void CSerial::Idle(){
 	
 	#endif
 #else
-	::Sleep(5);
+	::Sleep(1);
 #endif
 
 }
@@ -179,7 +179,7 @@ int CSerial::Puts(const char* s, unsigned long timeout){
 	return LastError=errorCode;
 }
 
-int CSerial::PutBlock(const char* buf, unsigned long size, unsigned long timeout){
+int CSerial::PutBlock(const char* buf, size_t size, unsigned long timeout){
 	int errorCode = SERIAL_ERR_OK;
 	if (buf){
 		SetTimeout (true, timeout);
