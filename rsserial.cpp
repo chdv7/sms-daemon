@@ -242,7 +242,7 @@ int CRSSerial::SendChar(int c){
 	return LastError = SERIAL_ERR_OK;
 }
 
-int CRSSerial::PutBlock(const char* buf, unsigned long size, unsigned long timeout){
+int CRSSerial::PutBlock(const char* buf, size_t size, unsigned long timeout){
 	if (CheckModemReadyMask())
 		return LastError;
 	int errorCode = SERIAL_ERR_OK;
@@ -353,6 +353,41 @@ int CRSSerial::Close(){
 	return CSerial::Close();
 }
 
+int  CRSSerial::PutBlock(const char* buf, size_t size, unsigned long timeout){
+	if (!buf || !size)
+		return SERIAL_ERR_OK;
+
+	if (ComHandler <=0 )
+		return LastError = SERIAL_ERR_NOTOPENED;
+
+	SetTimeout (true, timeout);
+	for (;;){
+		struct timeval tv_1ms {
+			.tv_sec = 0,
+			.tv_usec = 1000
+		};
+		fd_set fds;
+		FD_ZERO(&fds);
+		FD_SET(ComHandler, &fds);
+		
+		select(ComHandler + 1, NULL, &fds, NULL, &tv_1ms);
+		if (FD_ISSET(ComHandler, &fds)) {
+			auto writen = write(ComHandler, buf, size);
+			if (writen >= 0){  // Part is writen
+				size -= writen;
+				buf += writen;
+				if (!size)
+					return LastError = SERIAL_ERR_OK; // Done
+			}
+			else if (errno != EAGAIN)
+				return LastError = SERIAL_ERR_GENERAL;
+		}
+		if (CheckTimeout(true))
+			return LastError = SERIAL_ERR_TIMEOUT;
+	}	
+	return 0;
+}
+
 int CRSSerial::SendChar(int c){
 //printf ("SendChar %c\n", c);
 
@@ -415,8 +450,8 @@ int CRSSerial::ReceiveChar(){
 }
 
 int CRSSerial::AdjustRSParams(){
- 	struct termios options; /*структура для установки порта*/
-//    	tcgetattr(ComHandler, &options); /*читает пораметры порта*/
+ 	struct termios options; /*пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ*/
+//    	tcgetattr(ComHandler, &options); /*пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ*/
 	memset (&options, 0, sizeof (options));
 #if 0
 cout  
@@ -482,7 +517,7 @@ cout
  //   speed_t c_ispeed;		/* input speed */
  //   speed_t c_ospeed;		/* output speed */
 	tcflush(ComHandler, TCIOFLUSH); // Flush buffers		 	
- 	tcsetattr(ComHandler, TCSANOW, &options); /*пишет пораметры порта*/
+ 	tcsetattr(ComHandler, TCSANOW, &options); /*пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ*/
 
 	return 0;
 }

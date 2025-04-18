@@ -143,7 +143,7 @@ public:
 	virtual int  Gets (char* buf, unsigned long size, int separator='\n', unsigned long timeout=SERIAL_DEFTIMEOUTREAD);
 	virtual int  Gets (char* buf, unsigned long size, const char* separators, unsigned long timeout=SERIAL_DEFTIMEOUTREAD);
 	virtual int  ReceiveChar();
-	virtual int  PutBlock  (const char* buf, unsigned long size, unsigned long timeout= SERIAL_DEFTIMEOUTWRITE);
+	virtual int  PutBlock  (const char* buf, size_t size, unsigned long timeout= SERIAL_DEFTIMEOUTWRITE);
 	virtual int  PutBlockEx(const char* buf, unsigned long size, unsigned long timeout= SERIAL_DEFTIMEOUTWRITE);
 	virtual int  Puts(const char* s, unsigned long timeout= SERIAL_DEFTIMEOUTWRITE);
 	virtual int  PutChar(int chr, unsigned long timeout = SERIAL_DEFTIMEOUTWRITE);
