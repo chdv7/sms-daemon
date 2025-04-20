@@ -420,6 +420,45 @@ int CRSSerial::SendChar(int c){
 	return SERIAL_ERR_OK;
 }
 
+int CRSSerial::GetBlock (char* buf, size_t size, unsigned long timeout){
+	if (!buf || !size)
+		return SERIAL_ERR_OK;
+
+	if (ComHandler <=0 )
+		return LastError = SERIAL_ERR_NOTOPENED;
+
+	SetTimeout (true, timeout);
+	for (;;){
+		struct timeval tv_1ms {
+			.tv_sec = 0,
+			.tv_usec = 1000
+		};
+		fd_set fds;
+		FD_ZERO(&fds);
+		FD_SET(ComHandler, &fds);
+		
+		select(ComHandler + 1, &fds, NULL, NULL, &tv_1ms);
+		if (FD_ISSET(ComHandler, &fds)) {
+			auto red = read(ComHandler, buf, size);
+			if (red > 0){  // Part is writen
+				size -= red;
+				buf += red;
+				if (!size)
+					return LastError = SERIAL_ERR_OK; // Done
+			}
+			else if (red == 0)
+				return LastError = SERIAL_ERR_NOTOPENED;
+			else if (errno != EAGAIN)
+				return LastError = SERIAL_ERR_GENERAL;
+			// Process EAGAIN go to the next loop
+		}
+		if (CheckTimeout(true))
+			return LastError = SERIAL_ERR_TIMEOUT;
+	}	
+	return 0;
+}
+
+
 int CRSSerial::ReceiveChar(){
 	unsigned char ch=0;
 
@@ -435,7 +474,7 @@ int CRSSerial::ReceiveChar(){
 		select(ComHandler + 1, &fds, NULL, NULL, &tv);
 
 		if (FD_ISSET(ComHandler, &fds)) {
-			int err = read( ComHandler, &ch, 1);
+			auto err = read( ComHandler, &ch, 1);
 				if (err < 0)
 					return LastError = SERIAL_ERR_GENERAL;
 				if (err > 0)
@@ -453,29 +492,11 @@ int CRSSerial::AdjustRSParams(){
  	struct termios options; /*��������� ��� ��������� �����*/
 //    	tcgetattr(ComHandler, &options); /*������ ��������� �����*/
 	memset (&options, 0, sizeof (options));
-#if 0
-cout  
-	<< "c_iflag   " << options.c_iflag  <<  "\n"
-	<< "c_oflag   " << options.c_oflag  <<  "\n"
-	<< "c_cflag   " << options.c_cflag  <<  "\n"
-	<< "c_lflag   " << options.c_lflag  <<  "\n"
-	<< "c_line    " << (int)options.c_line <<  "\n"
-	<< "c_ispeed  " << options.c_ispeed <<  "\n"
-	<< "c_ospeed  " << options.c_ospeed <<  "\n"
-"\n" ;
-
-	for (int i = 0; i < NCCS; ++i)
-		cout << (int) options.c_cc[i] <<" ";
-	cout << "\n";
-#endif
 	cfmakeraw (&options);
 	options.c_cflag &= ~(CSIZE | CSTOPB | PARENB | CBAUD);
 	options.c_cflag  |=  CREAD | HUPCL | CLOCAL ;
 
-//	options.c_cflag = 2237;
 	options.c_iflag = IGNBRK;
-//	options.c_oflag =0;
-//	options.c_lflag =0;
 
 	switch (DataBits){
 		case 5:  options.c_cflag |= CS5; break;
@@ -484,38 +505,29 @@ cout
 		case 8: 
 		default: options.c_cflag |= CS8; break;			
 	}
-	if (StopBits==2){
+	if (StopBits==2)
 		options.c_cflag |= CSTOPB;
-	}
+
 	int br = B9600;
 	switch (BaudRate){
-		case 300:    br = B300;   break;
-	        case 600:    br = B600;   break;
-	        case 1200:   br = B1200;  break;
-	        case 2400:   br = B2400;  break;
-	        case 4800:   br = B4800;  break;
-	        case 19200:  br = B19200; break;
-	        case 38400:  br = B38400; break;
-	        case 57600:  br = B57600; break;
-	        case 115200: br = B115200;break;
-		case 230400: br = B230400;break;
-	        case 9600:
-		default:     br = B9600;
+	case 300:    br = B300;    break;
+	case 600:    br = B600;    break;
+	case 1200:   br = B1200;   break;
+	case 2400:   br = B2400;   break;
+	case 4800:   br = B4800;   break;
+	case 19200:  br = B19200;  break;
+	case 38400:  br = B38400;  break;
+	case 57600:  br = B57600;  break;
+	case 115200: br = B115200; break;
+	case 230400: br = B230400; break;
+	case 9600:
+	default:     br = B9600;
 	}
 
 	options.c_cflag |= br;
 
 	cfsetospeed(&options, br);
 	cfsetispeed(&options, br);
-
-//  tcflag_t c;		/* input mode flags */
- //   tcflag_t c_oflag;		/* output mode flags */
- //   tcflag_t c_cflag;		/* control mode flags */
- //   tcflag_t c_lflag;		/* local mode flags */
- //   cc_t c_line;			/* line discipline */
- //   cc_t c_cc[NCCS];		/* control characters */
- //   speed_t c_ispeed;		/* input speed */
- //   speed_t c_ospeed;		/* output speed */
 	tcflush(ComHandler, TCIOFLUSH); // Flush buffers		 	
  	tcsetattr(ComHandler, TCSANOW, &options); /*����� ��������� �����*/
 

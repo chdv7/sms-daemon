@@ -50,6 +50,7 @@ public:
 	static bool IsValidAddress(const char* address);
 	virtual int SendChar(int c);
 	virtual int PutBlock(const char* buf, size_t size, unsigned long timeout=SERIAL_DEFTIMEOUTREAD);
+	virtual int GetBlock   (char* buf, size_t size, unsigned long timeout=SERIAL_DEFTIMEOUTREAD);
 	virtual int ReceiveChar();
 	virtual int Close();
 	virtual int Open (const char* name, int timeout=SERIAL_DEFTIMEOUTCALL);

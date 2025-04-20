@@ -138,7 +138,7 @@ public:
 	virtual unsigned long GetDefTimeout(int op);
 	int          GetLastError();
 	virtual int  EnableTimeSlice(bool enable=true);	// enable meassges pump during awaiting of operations end
-	virtual int  GetBlock   (char* buf, unsigned long size, unsigned long timeout=SERIAL_DEFTIMEOUTREAD);
+	virtual int  GetBlock   (char* buf, size_t size, unsigned long timeout=SERIAL_DEFTIMEOUTREAD);
 	virtual int  GetBlockEx (char* buf, unsigned long size, unsigned long timeout=SERIAL_DEFTIMEOUTREAD);
 	virtual int  Gets (char* buf, unsigned long size, int separator='\n', unsigned long timeout=SERIAL_DEFTIMEOUTREAD);
 	virtual int  Gets (char* buf, unsigned long size, const char* separators, unsigned long timeout=SERIAL_DEFTIMEOUTREAD);

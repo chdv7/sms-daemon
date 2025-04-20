@@ -52,7 +52,7 @@ unsigned char lookup7Bit[256] = { // lookup table to check possibility convert 8
 };
 
 
-wstring UTF8ToUnicode (const char* src){
+std::wstring UTF8ToUnicode (const char* src){
 static const char XML_utf8ByteTable[256] =
 {
 //  0 1 2 3 4 5 6 7 8 9 a b c d e f
@@ -75,7 +75,7 @@ static const char XML_utf8ByteTable[256] =
 };
 
 
-	wstring sout;
+	std::wstring sout;
 	if (!src){
 		return sout;
 	}
@@ -196,11 +196,11 @@ void COutPduSms::AddText(const char* text, bool isUTF8) {
 }
 
 
-string ClearPhoneNo (string text){
+std::string ClearPhoneNo (std::string text){
 	if (text[0] == '+')
 		text.erase(text.begin());
 
-	for (string::iterator it = text.begin(); it != text.end(); ++it){
+	for (std::string::iterator it = text.begin(); it != text.end(); ++it){
 		if (!isdigit( *it)){
 			text.erase( it, text.end());
 			break;
@@ -209,8 +209,8 @@ string ClearPhoneNo (string text){
 	return text;
 }
 
-string BinToText ( unsigned char* ptr, int len ){
-	string sout;
+std::string BinToText ( unsigned char* ptr, int len ){
+	std::string sout;
 	sout.reserve(len*2+2);
 	for (int i=0;i < len;i++){
 		char tmp[100];
@@ -220,19 +220,19 @@ string BinToText ( unsigned char* ptr, int len ){
 	return sout;
 }
 
-string BinToText ( unsigned char chr){
+std::string BinToText ( unsigned char chr){
 	char tmp[100];
 	sprintf (tmp, "%02X", chr);
 	return tmp;
 }
 
-static string EncodeHexDec(string text){
-	string rtn;
+static std::string EncodeHexDec(std::string text){
+	std::string rtn;
 	if (text.length() &1)
 		text+= 'F';
 
 	int len = text.length();
-	string out;
+	std::string out;
 	for (int i = 0; i < len; ++i){
 		out += text[i^1];
 	}
@@ -241,10 +241,10 @@ static string EncodeHexDec(string text){
 }
 
 
-string COutPduSms::MakeSmsSubmitHeader(bool isHasUDH, PDU_EncodingScheme encodingScheme)
+std::string COutPduSms::MakeSmsSubmitHeader(bool isHasUDH, PDU_EncodingScheme encodingScheme)
 {
-	string phoneNo = ClearPhoneNo (m_sPone);
-	string hdr;
+	std::string phoneNo = ClearPhoneNo (m_sPone);
+	std::string hdr;
 	hdr.reserve(60);
 	hdr += "00";                    // SMSC
 	unsigned char    nSmsSubmit  = 0x01; // TP_MTI
@@ -281,7 +281,7 @@ string COutPduSms::MakeSmsSubmitHeader(bool isHasUDH, PDU_EncodingScheme encodin
 	return hdr;
 }
 
-static string encode7bitStep8to7 (const wchar_t* text, int len){
+static std::string encode7bitStep8to7 (const wchar_t* text, int len){
 //	const unsigned char mask[8] = {0x0, 0x1, 0x3, 0x7, 0xf, 0x1f, 0x3f, 0x7f}
 	unsigned char bout[8];
 	memset (bout, 0, sizeof bout);
@@ -298,12 +298,12 @@ static string encode7bitStep8to7 (const wchar_t* text, int len){
 	return BinToText(bout, len);
 }
 
-static string encode7bit (const wchar_t* text, int maxtextlen ){
-	string sout;
+static std::string encode7bit (const wchar_t* text, int maxtextlen ){
+	std::string sout;
 	sout.reserve (maxtextlen+10);
 
 	while (maxtextlen >0){
-		int len = min (maxtextlen, 8);
+		int len = std::min (maxtextlen, 8);
 		sout += encode7bitStep8to7( text, len);
 		text+=len;
 		maxtextlen -= len;
@@ -316,14 +316,14 @@ TOutPduBlock COutPduSms::ParseText(void)
 {
 	// Define encoding mode 
 
-	wstring sText = m_sText;
+	std::wstring sText = m_sText;
 	if (!sText.length())
 		sText += ' ';
 
 
 // Choice encoding scheme
 	PDU_EncodingScheme encodingScheme = PDU_7;  // default is 7 bit	
-	wstring sms7BitText;
+	std::wstring sms7BitText;
 	if (m_bForceUnicode){
 		encodingScheme = PDU_16;
 	}
@@ -375,7 +375,7 @@ TOutPduBlock COutPduSms::ParseText(void)
 //	if (nParts > 255) // ToDo check for max SMS parts
 
 
-	string smsPartHdr = MakeSmsSubmitHeader (hasUDH, encodingScheme); // Header common for all parts of SMS (next byte is TP-USER-DATA-LENGTH
+std::string smsPartHdr = MakeSmsSubmitHeader (hasUDH, encodingScheme); // Header common for all parts of SMS (next byte is TP-USER-DATA-LENGTH
 //	TRACE ("%s\n", smsPartHdr.c_str());
 
 	const wchar_t* txt = sText.c_str();
@@ -389,8 +389,8 @@ TOutPduBlock COutPduSms::ParseText(void)
 	TOutPduBlock outList;
 
 	for (unsigned char iPart=0; iPart<nParts; ++iPart){
-		string smsText = smsPartHdr;
-		unsigned char partSZ = (unsigned char) min(textLen, maxPartSize);
+		std::string smsText = smsPartHdr;
+		unsigned char partSZ = (unsigned char) std::min(textLen, maxPartSize);
 		unsigned char dataSZ = (hasUDH) ? partSZ + UdhLenInChars[encodingScheme] : partSZ;
 		if (encodingScheme == PDU_16)
 			dataSZ<<=1;

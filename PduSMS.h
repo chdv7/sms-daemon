@@ -1,14 +1,13 @@
 #pragma once
 #include <string>
 #include <vector>
-using namespace std;
 
-typedef vector<string> TOutPduBlock;
+using TOutPduBlock=std::vector<std::string> ;
 class COutPduSms
 {
 enum PDU_EncodingScheme{ PDU_7=0, PDU_8, PDU_16 };
-	string m_sPone;
-	wstring m_sText;
+	std::string m_sPone;
+	std::wstring m_sText;
 public:
 	COutPduSms(void);
 	COutPduSms (const char* phone, const wchar_t* text);
@@ -19,7 +18,7 @@ public:
 	~COutPduSms(void);
 	TOutPduBlock ParseText(void);
 private:
-	string MakeSmsSubmitHeader(bool isHasUDH, PDU_EncodingScheme encodingScheme);
+	std::string MakeSmsSubmitHeader(bool isHasUDH, PDU_EncodingScheme encodingScheme);
 public:
 	// flags can be set if need
 	bool m_bForceUDH;
