@@ -276,7 +276,7 @@ int CSerial::Gets (char* buf, unsigned long size, const char* separators, unsign
 	return LastError=(chr>=0?SERIAL_ERR_OK:chr);
 }
 
-int CSerial::GetBlock (char* buf, unsigned long size, unsigned long timeout){
+int CSerial::GetBlock (char* buf, size_t size, unsigned long timeout){
 	int chr = SERIAL_ERR_OK;
 	if (buf && size){
 		SetTimeout (false, timeout);

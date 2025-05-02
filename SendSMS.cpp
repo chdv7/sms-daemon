@@ -13,7 +13,7 @@ Usage: nv-send-sms <phoneNo> [<out folder>]\n\
 ");
 }
 
-string GenUniqueID (){
+std::string GenUniqueID (){
 	static unsigned  counter=0;
 	char buf[100]="--";
 	struct timeb  tt;
@@ -23,20 +23,20 @@ string GenUniqueID (){
 }
 
 int SaveSMS (const char* pdu, const char* dir){
-	string uniqueID = "Local-"+ GenUniqueID();
-	string tmp_name = string(dir) + "/.tmp_" + uniqueID;
+	std::string uniqueID = "Local-"+ GenUniqueID();
+	std::string tmp_name = std::string(dir) + "/.tmp_" + uniqueID;
 //printf ("%s\n", tmp_name.c_str());	
 	FILE* f = fopen (tmp_name.c_str(), "w");
 	if (!f)
 		return -1;
 	fputs (pdu, f);
 	fclose(f);
-	return rename (tmp_name.c_str(), (string(dir) + "/" + uniqueID).c_str())==0 ? 0: -2;
+	return rename (tmp_name.c_str(), (std::string(dir) + "/" + uniqueID).c_str())==0 ? 0: -2;
 	return 0;
 }
 
 int GenSMS (const char* phoneNo, const char* dir){
-	string sms_text;
+	std::string sms_text;
 	sms_text.reserve(256);
 	for (;;){
 		int ch = getchar ();
