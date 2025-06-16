@@ -458,7 +458,7 @@ int CRecvSMSProcessor::ProcessPart(std::unique_ptr<CRecvSMSPart> pSms) {
     fprintf(stderr,
             "Differet part indicator registered nParts:%u <> part#:%u has "
             "nParts:%u\n",
-            smsStorage.nParts(), pSms->m_nPartNo, pSms->m_nParts);
+            (int)smsStorage.nParts(), pSms->m_nPartNo, pSms->m_nParts);
   }
   auto err = smsStorage.addPart(std::move(pSms));
   if (err) fprintf(stderr, "Part storage error %d\n", err);
