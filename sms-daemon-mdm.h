@@ -1,4 +1,5 @@
 #pragma once
+#include <array>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -10,10 +11,11 @@
 typedef int (*SmsCallBack)(const std::string number, const std::string text,
                            std::string& replay, void* userdata);
 typedef int (*SmsCallBackXml)(XMLNode sms, std::string& replay, void* userdata);
+constexpr int maxSmsIndex = 128;
 class CSmsDaemon {
   struct TMdmRcvSms {
     std::string pdu;
-    int index{-1};
+    uint8_t index{};
     bool isProcessed{false};
   };
   struct TSmsBlock {
@@ -37,7 +39,7 @@ class CSmsDaemon {
   };
   std::vector<TCallBackXMLDescriptor> m_SmsInXMLCallback;
 
-  std::unordered_map<int, bool> m_DirtySimSlots;
+  std::array<bool, maxSmsIndex> m_DirtySimSlots;
   std::string m_DeviceName{DEVICE};
   std::string m_CachePath{IN_SMS_CACHE_NAME};
   std::string m_OutSmsMailDir{OUT_SMS_DIR};
