@@ -143,10 +143,8 @@ void CSmsDaemon::DoProcessInSmsBlock() {
     printf("Error processing incoming SMS: %d\n", smsBlock.err);
   }
 
-  if (!smsBlock.sms.empty()) {
     ProcessSmsBlock(smsBlock);
     DelSmsBlock(smsBlock.sms);
-  }
 }
 
 CSmsDaemon::TSmsBlock CSmsDaemon::GetSmsBlockByCMGR() {
@@ -192,7 +190,9 @@ CSmsDaemon::TSmsBlock CSmsDaemon::GetSmsBlockByCMGL() {
     for (char* ptr = log; ptr && ((ptr = strstr(ptr, "CMGL:")) != NULL);) {
       ptr += 5;  // skip CMGL:
       TMdmRcvSms sms;
-      if (sscanf(ptr, "%d", &sms.index) > 0 && sms.index >= 0) {
+      int index=-1;
+      if (sscanf(ptr, "%d", &index) > 0 && index >= 0 && index < maxSmsIndex) {
+        sms.index = index;
         if ((ptr = strchr(ptr, '\r')) == NULL) break;
         if (*(++ptr) == '\n') ptr++;
         while (isHexDecChar(*ptr)) {
@@ -215,10 +215,12 @@ int CSmsDaemon::ProcessSmsBlock(TSmsBlock& smsBlock) {
   int rtn = 0;
   for (TMdmRcvSms& sms : smsBlock.sms) {
     if (!m_DirtySimSlots[sms.index]) {
-      m_RecvSMSProcessor.ProcessPDU(sms.pdu.c_str());
+      m_RecvSMSProcessor.processPDU(sms.pdu.c_str());
       m_DirtySimSlots[sms.index] = true;
+      rtn++;
     }
   }
+  m_RecvSMSProcessor.clearCache();
   return rtn;
 }
 
