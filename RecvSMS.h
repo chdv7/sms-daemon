@@ -50,8 +50,10 @@ struct SmsCacheEntry {
     size_t index = part->m_nPartNo - 1;
     if (index >= parts.size()) return -112;
     int ret = 0;
-    if (parts[index] == nullptr)
+    if (parts[index] == nullptr){
       nPartsReceived++;
+      lastUpdate = time(NULL);
+    }
     else
       ret = 113;
     parts[index] = std::move(part);
@@ -61,6 +63,7 @@ struct SmsCacheEntry {
   size_t nRecvdParts() { return nPartsReceived; }
 
   bool isReceived() { return nRecvdParts() == nParts(); }
+  time_t lastUpdate {};
   size_t nPartsReceived{};
   std::vector<std::unique_ptr<CRecvSMSPart>> parts;
 };
@@ -85,7 +88,7 @@ class ReceivedSMS {
   time_t m_RecvTime{};
   std::vector<std::unique_ptr<CRecvSMSPart>> parts;
   std::string m_Interface;
-
+  bool isOk {true};
  private:
   void init();
 };
@@ -94,20 +97,20 @@ class CRecvSMSProcessor {
  public:
   CRecvSMSProcessor() = default;
   ~CRecvSMSProcessor() = default;
-  string m_InterfaceID{};
-  bool m_bAddDebugInfo{};
-  int m_nSmsProcessed{};
-  int m_nPartsProcessed{};
+//  int m_nSmsProcessed{};
+//  int m_nPartsProcessed{};
+  time_t smsPartTimeout_ {600};
   int Init(string cachePath, string interfaceID);
-  int ProcessPDU(const char* pdu);
   void SetSmsCallBack(std::function<void(const ReceivedSMS&)> fn) {
     onSmsCallBack = fn;
   }
-
+  int processPDU(const char* pdu);
+  void clearCache();
  protected:
+  int ProcessPart(std::unique_ptr<CRecvSMSPart> sms);
+  string m_InterfaceID{};
   std::function<void(const ReceivedSMS&)> onSmsCallBack{};
   SmsCache cache;
-  int ProcessPart(std::unique_ptr<CRecvSMSPart> sms);
   int64_t m_LastProcessedItemID;
   std::string m_sCachePath;
 };
