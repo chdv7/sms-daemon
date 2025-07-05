@@ -293,12 +293,14 @@ void CSmsDaemon::DoProcessOutSmsFolder() {
     string fname(m_OutSmsMailDir);
     fname += "/";
     fname += entry->d_name;
+    cout << fname << " ";
     FILE* f = fopen(fname.c_str(), "r");
     if (f) {
       char buf[1024] = "";
       fgets(buf, sizeof(buf), f);
       fclose(f);
       int err = strlen(buf) ? SendSmsPart(buf) : -100;
+      cout << err;
       if (err) {
         string outStr(string("Can not send SMS ") + entry->d_name);
         fprintf(stderr, "%s\n", outStr.c_str());
@@ -306,6 +308,7 @@ void CSmsDaemon::DoProcessOutSmsFolder() {
       }
     }
     unlink(fname.c_str());
+    cout << endl;
   };
 
   closedir(dir);
