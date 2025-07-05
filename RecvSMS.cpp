@@ -360,19 +360,18 @@ int CRecvSMSProcessor::Init(string cachePath, string interfaceID) {
   return 0;
 }
 
-int CRecvSMSProcessor::ProcessPDU(const char* pdu) {
+int CRecvSMSProcessor::processPDU(const char* pdu) {
   auto sms = std::make_unique<CRecvSMSPart>();
   sms->ProcessRecvPDU(pdu);
-  m_nPartsProcessed++;
 
   if (sms->m_nParts <= 1) {
     if (onSmsCallBack) {
       ReceivedSMS receivedSMS(std::move(sms), m_InterfaceID);
       onSmsCallBack(receivedSMS);
     }
-  } else {
+  } 
+  else
     ProcessPart(std::move(sms));
-  }
   return 0;
 }
 
@@ -412,13 +411,31 @@ ReceivedSMS::ReceivedSMS(
 }
 
 void ReceivedSMS::init() {
-  if (parts.empty()) return;
-  m_From = parts[0]->m_From;
-  m_SMSC = parts[0]->m_SMSC;
-  m_TimeStamp = parts[0]->m_TimeStamp;
+
   m_nParts = parts.size();
-  for (const auto& part : parts) m_sText += part->m_sText;
+
+  for (const auto& part : parts){
+    if (part){
+      m_From = part->m_From;
+      m_SMSC = part->m_SMSC;
+      m_TimeStamp = part->m_TimeStamp;
+      break;
+    }
+  }
+  bool missed = false;
+  for (const auto& part : parts){
+    if (part){ 
+      m_sText += part->m_sText;
+      missed = false;
+    }
+    else if (!missed){
+      isOk = false;
+      m_sText += L"<...>";
+      missed = true;
+    }
+  }
 }
+
 XMLNode ReceivedSMS::GenXML(bool includeParts, bool debugFlag) const {
   XMLNode xSms = XMLNode::createXMLTopNode("Sms");
   char tmp1024[1024];
@@ -430,14 +447,16 @@ XMLNode ReceivedSMS::GenXML(bool includeParts, bool debugFlag) const {
 
   xSms.addAttribute("ReceiveTime", toLocalTime(m_RecvTime).c_str());
 
+  xSms.addAttribute("status", isOk? "Received" : "Bad");
   xSms.addAttribute("Interface", m_Interface.c_str());
-
   sprintf(tmp1024, "%d", m_nParts);
   xSms.addAttribute("nParts", tmp1024);
 
   xSms.addText(toUTF8(m_sText).c_str());
   if (includeParts)
     for (const auto& part : parts) {
+      if (!part)
+        continue;
       auto xPart = part->GenXML(debugFlag);
       xSms.addChild(xPart);
     }
@@ -458,7 +477,7 @@ int CRecvSMSProcessor::ProcessPart(std::unique_ptr<CRecvSMSPart> pSms) {
     fprintf(stderr,
             "Differet part indicator registered nParts:%u <> part#:%u has "
             "nParts:%u\n",
-            smsStorage.nParts(), pSms->m_nPartNo, pSms->m_nParts);
+            (unsigned int)smsStorage.nParts(), pSms->m_nPartNo, pSms->m_nParts);
   }
   auto err = smsStorage.addPart(std::move(pSms));
   if (err) fprintf(stderr, "Part storage error %d\n", err);
@@ -469,4 +488,21 @@ int CRecvSMSProcessor::ProcessPart(std::unique_ptr<CRecvSMSPart> pSms) {
     if (onSmsCallBack) onSmsCallBack(receivedSMS);
   }
   return 0;
+}
+
+void CRecvSMSProcessor::clearCache() {
+    if(cache.empty())
+        return;
+    time_t now = time(NULL);
+    vector<smsCacheKey> expiredEntries;
+    for(auto& entry : cache)
+        if((now - entry.second.lastUpdate) > smsPartTimeout_){
+            expiredEntries.push_back(entry.first);
+            if (onSmsCallBack)
+              onSmsCallBack(ReceivedSMS (std::move(entry.second.parts), m_InterfaceID));
+        }
+
+    for(auto& entryKey : expiredEntries){
+        cache.erase(entryKey);
+    }
 }
