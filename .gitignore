@@ -1,5 +1,7 @@
 *.o
 *.json
 *.xml
+build/*
 sms-daemon
-sms-send
+sms-sendls
+
