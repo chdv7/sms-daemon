@@ -3,5 +3,6 @@
 *.xml
 build/*
 sms-daemon
-sms-sendls
+sms-send
+doc/*
 
