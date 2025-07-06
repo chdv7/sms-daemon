@@ -1,7 +1,7 @@
 #ifndef __SERIALRS_H__
 #define __SERIALRS_H__
 #include <vector>
-
+#include <poll.h>
 #include "serial.h"
 
 enum CFlowControl {
@@ -16,23 +16,6 @@ enum CFlowControl {
 enum CParity { parityNone = 0, parityOdd, parityEven, parityMark, paritySpace };
 
 class CRSSerial : public CSerial {
-private:
-protected:
-    virtual int AdjustRSParams();
-
-    CParity Parity;
-    CFlowControl FlowControl;
-    unsigned long StopBits;
-    unsigned long DataBits;
-    unsigned long BaudRate;
-    unsigned long ModemReadyMask;
-
-#ifdef _WIN32
-    HANDLE ComHandler;
-    COMMTIMEOUTS TimeOuts;
-#else
-    int ComHandler;
-#endif
     CRSSerial& operator=(const CRSSerial&) = delete;
     CRSSerial(const CRSSerial&) = delete;
 
@@ -52,6 +35,25 @@ public:
     virtual int Open(const char* name, int timeout = SERIAL_DEFTIMEOUTCALL);
     virtual ~CRSSerial();
     CRSSerial();
+protected:
+    virtual int AdjustRSParams();
+    virtual void Idle();
+    void Idle (bool isWrite);
+
+    CParity Parity {parityNone};
+    CFlowControl FlowControl{flowControlNone};
+    unsigned long StopBits {1};
+    unsigned long DataBits {8};
+    unsigned long BaudRate {115200UL};
+    unsigned long ModemReadyMask {0};
+#ifdef _WIN32
+    HANDLE ComHandler {nullptr};
+    COMMTIMEOUTS TimeOuts;
+#else
+    int ComHandler {-1};
+    struct pollfd pollfd_{-1,0,0};
+#endif
+
 };
 
 #endif

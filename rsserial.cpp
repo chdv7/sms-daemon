@@ -17,17 +17,6 @@
 using namespace std;
 
 CRSSerial::CRSSerial()
-    : Parity(parityNone)
-    , FlowControl(flowControlNone)
-    , StopBits(1)
-    , DataBits(8)
-    , BaudRate(115200UL)
-    , ModemReadyMask(0)
-#ifdef _WIN32
-    , ComHandler(NULL)
-#else
-    , ComHandler(-1)
-#endif
 {
 #ifdef _WIN32
     TimeOuts.ReadIntervalTimeout = 0;
@@ -316,7 +305,7 @@ int CRSSerial::Open(const char* name, int /*timeout*/) {
         if(*name != '/') // short name
             comName = "/dev/";
         comName += name;
-        ComHandler = open(comName.c_str(), O_RDWR);
+        pollfd_.fd = ComHandler = open(comName.c_str(), O_RDWR);        
         if(ComHandler < 0) {
             LastError = SERIAL_ERR_NOTOPENED;
         }
@@ -342,7 +331,7 @@ int CRSSerial::Close() {
         AdjustRSParams();
         FlowControl = fc;
         close(ComHandler);
-        ComHandler = -1;
+        pollfd_.fd = ComHandler = -1;
     }
 
     return CSerial::Close();
@@ -478,8 +467,7 @@ int CRSSerial::ReceiveChar() {
 }
 
 int CRSSerial::AdjustRSParams() {
-    struct termios options; /*��������� ��� ��������� �����*/
-    //    	tcgetattr(ComHandler, &options); /*������ ��������� �����*/
+    struct termios options; 
     memset(&options, 0, sizeof(options));
     cfmakeraw(&options);
     options.c_cflag &= ~(CSIZE | CSTOPB | PARENB | CBAUD);
@@ -634,4 +622,7 @@ int CRSSerial::CheckModemReadyMask() {
         LastError = (ComHandler ? SERIAL_ERR_OK : SERIAL_ERR_NOTOPENED);
 
     return LastError;
+}
+void CRSSerial::Idle(){
+    CSerial::Idle();
 }
