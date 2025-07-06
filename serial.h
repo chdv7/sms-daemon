@@ -67,112 +67,103 @@ enum CSerialType { serialTypeNone = 0, serialTypeRS, serialTypeIPClient };
 //#define UNGET_BUF_SIZE			 200
 
 class CSerialHandler {
- public:
-  CSerialHandler* GetParentHandler();
-  void SetParentHandler(CSerialHandler* serialHandler);
-  virtual ~CSerialHandler();
-  CSerialHandler();
-  virtual void OnSendChar(CSerialHandler* handler);
-  virtual void OnReceiveChar(CSerialHandler* handler);
-  virtual void OnDisconnect(CSerialHandler* handler);
-  virtual void OnConnect(CSerialHandler* handler);
-  virtual void OnIncomingCall(CSerialHandler* handler);
+public:
+    CSerialHandler* GetParentHandler();
+    void SetParentHandler(CSerialHandler* serialHandler);
+    virtual ~CSerialHandler();
+    CSerialHandler();
+    virtual void OnSendChar(CSerialHandler* handler);
+    virtual void OnReceiveChar(CSerialHandler* handler);
+    virtual void OnDisconnect(CSerialHandler* handler);
+    virtual void OnConnect(CSerialHandler* handler);
+    virtual void OnIncomingCall(CSerialHandler* handler);
 
- protected:
-  CSerialHandler* ParentHandler;
+protected:
+    CSerialHandler* ParentHandler;
 };
 
 struct CBinRecord {
-  unsigned char* Buf;
-  unsigned long Len;
-  CBinRecord(void* buf = NULL, unsigned long length = 0UL);
+    unsigned char* Buf;
+    unsigned long Len;
+    CBinRecord(void* buf = NULL, unsigned long length = 0UL);
 };
 
 typedef CBinRecord* LPBINRECORD;
 
 class CSerial : public CSerialHandler {
- protected:
-  unsigned char UngetBuf[UNGET_BUF_SIZE];
-  unsigned long UngetBufPtr;
-  unsigned long DefAwaiteCallTimeout;
-  std::string DeviceName;         // name of device
-  unsigned long DefWriteTimeout;  // default timeout for write operations
-  unsigned long DefReadTimeout;   // default timeout for read operations
-  unsigned long
-      DefSendExpectTimeout;  // default timeout for send/expect operations
-  unsigned long DefCallTimeout;
-  bool TSliceEnabled;  // flag if timeslice is enabled (has no effect in
-                       // console mode)
- protected:
-  bool Connected;      // flag if connection is established
-  bool IsTimeoutInMS;  // flag if timeout in miliseconds(true). Timeout in
-                       // seconds if it is false
-  unsigned long m_SendTimeout;
-  unsigned long m_RecvTimeout;
-  int LastError;  // Last error
-  CSerial();
-  virtual void Idle();  // function calls until class is awaiting end operation
-                        // during timeout
-  virtual bool CheckTimeout(bool isSend);  // If timeout
-  void SetDeviceName(const char* name);    // Set (change device name)
-  virtual void SetTimeout(bool isSend, unsigned long timeout);
-  int GetFromUnget();
+protected:
+    unsigned char UngetBuf[UNGET_BUF_SIZE];
+    unsigned long UngetBufPtr;
+    unsigned long DefAwaiteCallTimeout;
+    std::string DeviceName;             // name of device
+    unsigned long DefWriteTimeout;      // default timeout for write operations
+    unsigned long DefReadTimeout;       // default timeout for read operations
+    unsigned long DefSendExpectTimeout; // default timeout for send/expect operations
+    unsigned long DefCallTimeout;
+    bool TSliceEnabled; // flag if timeslice is enabled (has no effect in
+                        // console mode)
+protected:
+    bool Connected;     // flag if connection is established
+    bool IsTimeoutInMS; // flag if timeout in miliseconds(true). Timeout in
+                        // seconds if it is false
+    unsigned long m_SendTimeout;
+    unsigned long m_RecvTimeout;
+    int LastError; // Last error
+    CSerial();
+    virtual void Idle();                    // function calls until class is awaiting end operation
+                                            // during timeout
+    virtual bool CheckTimeout(bool isSend); // If timeout
+    void SetDeviceName(const char* name);   // Set (change device name)
+    virtual void SetTimeout(bool isSend, unsigned long timeout);
+    int GetFromUnget();
 
- public:
-  virtual CSerial* AwaiteCall(
-      unsigned long timeout = SERIAL_DEFTIMEOUTAWAITECALL);
-  virtual int IoCtl(unsigned long code, unsigned long lParam = 0,
-                    void* bparam = NULL);
-  bool IsConnected();
+public:
+    virtual CSerial* AwaiteCall(unsigned long timeout = SERIAL_DEFTIMEOUTAWAITECALL);
+    virtual int IoCtl(unsigned long code, unsigned long lParam = 0, void* bparam = NULL);
+    bool IsConnected();
 
-  virtual void ClearRX();
-  int SendExpect(const char* send, const char** samples,
-                 unsigned long timeout = SERIAL_DEFTIMEOUTSENDEXPECT,
-                 char* log = NULL, long logSize = 0);
-  int SendExpect(LPBINRECORD send, LPBINRECORD* samples,
-                 unsigned long timeout = SERIAL_DEFTIMEOUTSENDEXPECT,
-                 LPBINRECORD log = NULL);
-  virtual void OnConnect(
-      CSerialHandler* handler);  // if connection is established
-  virtual void OnDisconnect(CSerialHandler* handler);  // if connection is lost
-  bool IsTimeSliceEnabled();
-  virtual unsigned long GetDefTimeout(int op);
-  int GetLastError();
-  virtual int EnableTimeSlice(
-      bool enable =
-          true);  // enable meassges pump during awaiting of operations end
-  virtual int GetBlock(char* buf, size_t size,
-                       unsigned long timeout = SERIAL_DEFTIMEOUTREAD);
-  virtual int GetBlockEx(char* buf, unsigned long size,
-                         unsigned long timeout = SERIAL_DEFTIMEOUTREAD);
-  virtual int Gets(char* buf, unsigned long size, int separator = '\n',
-                   unsigned long timeout = SERIAL_DEFTIMEOUTREAD);
-  virtual int Gets(char* buf, unsigned long size, const char* separators,
-                   unsigned long timeout = SERIAL_DEFTIMEOUTREAD);
-  virtual int ReceiveChar();
-  virtual int PutBlock(const char* buf, size_t size,
-                       unsigned long timeout = SERIAL_DEFTIMEOUTWRITE);
-  virtual int PutBlockEx(const char* buf, unsigned long size,
-                         unsigned long timeout = SERIAL_DEFTIMEOUTWRITE);
-  virtual int Puts(const char* s,
-                   unsigned long timeout = SERIAL_DEFTIMEOUTWRITE);
-  virtual int PutChar(int chr, unsigned long timeout = SERIAL_DEFTIMEOUTWRITE);
-  virtual void SetDefTimeout(unsigned long timeout, int operation);
-  time_t GetSysTimeS();
-  unsigned long GetSysTimeMS();
-  time_t GetTOTime();
-  virtual int SendChar(int c);
-  virtual int GetChar(unsigned long timeout = SERIAL_DEFTIMEOUTREAD);
-  virtual int Close();
-  virtual int Open(const char* name, int timeout = SERIAL_DEFTIMEOUTCALL);
-  const char* GetDeviceName();
-  virtual CSerialType GetConnectorType();
-  int Ungetc(int chr);
-  int Ungets(char* str);
-  int UngetBlock(char* str, unsigned long size);
-  void ClearUngetBuf();
-  int GetUngetBufSize() { return UngetBufPtr; }
-  virtual ~CSerial();
+    virtual void ClearRX();
+    int SendExpect(
+        const char* send, const char** samples, unsigned long timeout = SERIAL_DEFTIMEOUTSENDEXPECT, char* log = NULL,
+        long logSize = 0);
+    int SendExpect(
+        LPBINRECORD send, LPBINRECORD* samples, unsigned long timeout = SERIAL_DEFTIMEOUTSENDEXPECT,
+        LPBINRECORD log = NULL);
+    virtual void OnConnect(CSerialHandler* handler);    // if connection is established
+    virtual void OnDisconnect(CSerialHandler* handler); // if connection is lost
+    bool IsTimeSliceEnabled();
+    virtual unsigned long GetDefTimeout(int op);
+    int GetLastError();
+    virtual int EnableTimeSlice(bool enable = true); // enable meassges pump during awaiting of operations end
+    virtual int GetBlock(char* buf, size_t size, unsigned long timeout = SERIAL_DEFTIMEOUTREAD);
+    virtual int GetBlockEx(char* buf, unsigned long size, unsigned long timeout = SERIAL_DEFTIMEOUTREAD);
+    virtual int Gets(
+        char* buf, unsigned long size, int separator = '\n', unsigned long timeout = SERIAL_DEFTIMEOUTREAD);
+    virtual int Gets(
+        char* buf, unsigned long size, const char* separators, unsigned long timeout = SERIAL_DEFTIMEOUTREAD);
+    virtual int ReceiveChar();
+    virtual int PutBlock(const char* buf, size_t size, unsigned long timeout = SERIAL_DEFTIMEOUTWRITE);
+    virtual int PutBlockEx(const char* buf, unsigned long size, unsigned long timeout = SERIAL_DEFTIMEOUTWRITE);
+    virtual int Puts(const char* s, unsigned long timeout = SERIAL_DEFTIMEOUTWRITE);
+    virtual int PutChar(int chr, unsigned long timeout = SERIAL_DEFTIMEOUTWRITE);
+    virtual void SetDefTimeout(unsigned long timeout, int operation);
+    time_t GetSysTimeS();
+    unsigned long GetSysTimeMS();
+    time_t GetTOTime();
+    virtual int SendChar(int c);
+    virtual int GetChar(unsigned long timeout = SERIAL_DEFTIMEOUTREAD);
+    virtual int Close();
+    virtual int Open(const char* name, int timeout = SERIAL_DEFTIMEOUTCALL);
+    const char* GetDeviceName();
+    virtual CSerialType GetConnectorType();
+    int Ungetc(int chr);
+    int Ungets(char* str);
+    int UngetBlock(char* str, unsigned long size);
+    void ClearUngetBuf();
+    int GetUngetBufSize() {
+        return UngetBufPtr;
+    }
+    virtual ~CSerial();
 };
 
 #endif
