@@ -5,14 +5,15 @@ CFLAGS    += -Wall -g
 CPPFLAGS  += -Wall -std=c++17 -g -MMD -MP
 LDFLAGS   +=
 
-# Папка для временных файлов
+# Папки
+SRCDIR    = src
 BUILD_DIR = build
 
 # Основные цели
 DAEMON_EXE = sms-daemon
 SENDER_EXE = sms-send
 
-# Исходники
+# Исходники (имена файлов без каталога)
 DAEMON_SOURCES_CPP = \
     sms-daemon.cpp \
     sms-daemon-mdm.cpp \
@@ -29,14 +30,14 @@ SENDER_SOURCES_CPP = \
 
 SOURCES_CPP = $(DAEMON_SOURCES_CPP) $(SENDER_SOURCES_CPP)
 
-# Функции для генерации путей
+# Объектные файлы и зависимости (в build/)
 OBJECTS_CPP   = $(addprefix $(BUILD_DIR)/,$(SOURCES_CPP:.cpp=.o))
 DEPENDS_CPP   = $(addprefix $(BUILD_DIR)/,$(SOURCES_CPP:.cpp=.d))
 
 DAEMON_OBJECTS = $(addprefix $(BUILD_DIR)/,$(DAEMON_SOURCES_CPP:.cpp=.o))
 SENDER_OBJECTS = $(addprefix $(BUILD_DIR)/,$(SENDER_SOURCES_CPP:.cpp=.o))
 
-# Цели по умолчанию
+# Цель по умолчанию
 all: $(DAEMON_EXE) $(SENDER_EXE)
 
 # Сборка исполняемых файлов
@@ -47,11 +48,13 @@ $(SENDER_EXE): $(SENDER_OBJECTS)
 	$(CXX) -o $@ $(LDFLAGS) $^
 
 # Создание директории и компиляция с зависимостями
-$(BUILD_DIR)/%.o: %.cpp
+# C++
+$(BUILD_DIR)/%.o: $(SRCDIR)/%.cpp
 	@mkdir -p $(dir $@)
 	$(CXX) -c $(CPPFLAGS) -o $@ $<
 
-$(BUILD_DIR)/%.o: %.c
+# C (если вдруг появятся .c файлы в src/)
+$(BUILD_DIR)/%.o: $(SRCDIR)/%.c
 	@mkdir -p $(dir $@)
 	$(CC) -c $(CFLAGS) -o $@ $<
 

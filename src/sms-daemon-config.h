@@ -1,12 +1,12 @@
 #pragma once
 
-#define IN_SMS_PATH             "/var/spool/sms/insms"
-#define IN_SMS_CACHE_NAME       "/var/spool/sms/sms-daemon-cacheSMS.xml"
+#define IN_SMS_PATH             "./insms"
+#define IN_SMS_CACHE_NAME       "./sms-daemon-cacheSMS.xml"
 #define DEVICE 					"/dev/ttyUSB0"
 #define DEVICE_MDM			DEVICE
 
-#define DATA_PID_PATH       	"/var/run/sms-daemon.pid"
-#define OUT_SMS_DIR         	"/var/spool/sms/outsms"
+#define DATA_PID_PATH       	"/tmp/sms-daemon.pid"
+#define OUT_SMS_DIR         	"./outsms"
 #define START_DELAY				2000
 #define SMS_TMP_DIR		"/tmp/sms-daemon"
 #define SMS_LOG_FILE	        SMS_TMP_DIR"/Log"
