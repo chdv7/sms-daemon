@@ -18,6 +18,9 @@ public:
     void AddText(const wchar_t* text) {
         m_sText += text;
     }
+    void ForceUnicode (bool force = true) {m_bForceUnicode = force;};
+    void SetRefNo (unsigned char ref) {m_nReference = ref;};
+
     void AddText(const char* text, bool isUTF8);
     ~COutPduSms(void);
     TOutPduBlock ParseText(void);

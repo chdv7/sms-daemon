@@ -22,9 +22,9 @@ struct T_UDH {
 
 static const unsigned char MAX_TEXT_LEN[3] = {160, 140, 70};
 static const unsigned char UdhLenInChars[3] = {7, 6, 3};
-
-static unsigned char gReference((unsigned char)time(NULL));
-
+namespace {
+unsigned char gReference((unsigned char)time(NULL));
+}
 unsigned char lookup7Bit[256] = {
     // lookup table to check possibility convert 8 bit character to 7 bit
     // values
