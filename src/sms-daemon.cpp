@@ -4,6 +4,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <chrono>
 
 #include <iostream>
 
@@ -75,6 +76,18 @@ int main(int argc, char* argv[]) {
     try {
         CSmsDaemon daemon;
         daemon.Setup();
+        daemon.RegisterInSmsCallBack ([](const ReceivedSMS& sms){
+            cout << "SMS From:" << toUTF8(sms.m_From) << " Parts:" << sms.m_nParts << " Text:" << toUTF8(sms.m_sText) << std::endl;
+            return 0;
+        });
+        daemon.RegisterInSmsCallBack ([](const ReceivedSMS& sms){
+            auto xml = sms.GenXML(true, true);
+            char buf[100];
+            sprintf(buf, "./SMS-%016llX.xml", std::chrono::system_clock::now().time_since_epoch().count());
+            xml.writeToFile(buf);
+            return 0;
+        });
+
         //		daemon.RegisterInSmsCallBack([](const std::string number, const
         // std::string text, std::string& replay, void* userdata) { replay = "OK
         //" + text; return 0; });

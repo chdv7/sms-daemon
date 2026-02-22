@@ -1,6 +1,7 @@
 #pragma once
 #include <array>
 #include <string>
+#include <functional>
 #include <unordered_map>
 #include <vector>
 
@@ -8,8 +9,8 @@
 #include "rsserial.h"
 #include "sms-daemon-config.h"
 
-typedef int (*SmsCallBack)(const std::string number, const std::string text, std::string& replay, void* userdata);
-typedef int (*SmsCallBackXml)(XMLNode sms, std::string& replay, void* userdata);
+using SmsCallBack = std::function <int (const ReceivedSMS&)>;
+
 constexpr int maxSmsIndex = 128;
 class CSmsDaemon {
     struct TMdmRcvSms {
@@ -24,21 +25,8 @@ class CSmsDaemon {
             return err < 0;
         }
     };
-    struct TCallBackDescriptor {
-        TCallBackDescriptor(SmsCallBack fn_, void* userdata_) : fn(fn_), userdata(userdata_) {
-        }
-        SmsCallBack fn;
-        void* userdata;
-    };
-    std::vector<TCallBackDescriptor> m_SmsInCallback;
 
-    struct TCallBackXMLDescriptor {
-        TCallBackXMLDescriptor(SmsCallBackXml fn_, void* userdata_) : fn(fn_), userdata(userdata_) {
-        }
-        SmsCallBackXml fn;
-        void* userdata;
-    };
-    std::vector<TCallBackXMLDescriptor> m_SmsInXMLCallback;
+    std::vector<SmsCallBack> m_SmsInCallback;
 
     std::array<bool, maxSmsIndex> m_DirtySimSlots;
     std::string m_DeviceName{DEVICE};
@@ -60,20 +48,16 @@ class CSmsDaemon {
     int SendSms(std::string number, std::string text, int flags = 0);
     bool DelSms(int index);
     void DelSmsBlock(vector<TMdmRcvSms> sms);
-    int OnCompleteSmsDecodeCB(XMLNode sms);
-    void onReceivedSMS(const ReceivedSMS&);
 
 public:
     CSmsDaemon() {
     }
     void Setup();
     int Go();
-    void RegisterInSmsCallBack(SmsCallBack fn, void* userdata = nullptr) {
-        m_SmsInCallback.emplace_back(fn, userdata);
+    void RegisterInSmsCallBack(SmsCallBack fn) {
+        m_SmsInCallback.emplace_back(fn);
     }
-    void RegisterInSmsCallBack(SmsCallBackXml fn, void* userdata = nullptr) {
-        m_SmsInXMLCallback.emplace_back(fn, userdata);
-    }
+
     struct SmsDaemonError {
         SmsDaemonError(int code = 0, std::string explanation = std::string()) : Verbose(explanation), ErrorCode(code) {
         }

@@ -59,18 +59,12 @@ int CSmsDaemon::Go() {
     return Do();
 }
 
-void CSmsDaemon::onReceivedSMS(const ReceivedSMS& sms) {
-    cout << "SMS From:" << toUTF8(sms.m_From) << " Parts:" << sms.m_nParts << " Text:" << toUTF8(sms.m_sText)
-         << std::endl;
-    auto xml = sms.GenXML(true, false);
-    char buf[100];
-    sprintf(buf, "./%016llX.xml", std::chrono::steady_clock::now().time_since_epoch().count());
-    xml.writeToFile(buf);
-}
-
 void CSmsDaemon::Init() {
     m_RecvSMSProcessor.Init(m_CachePath, m_DeviceName);
-    m_RecvSMSProcessor.SetSmsCallBack([this](const ReceivedSMS& sms) { onReceivedSMS(sms); });
+    m_RecvSMSProcessor.SetSmsCallBack([this](const ReceivedSMS& sms) { 
+        for (auto& cb : m_SmsInCallback)
+            cb (sms);
+     });
 
     int err = m_Connector.Open(m_DeviceName.c_str());
     if(err < 0)
@@ -100,41 +94,6 @@ void CSmsDaemon::Init() {
     return;
 }
 
-int CSmsDaemon::OnCompleteSmsDecodeCB(XMLNode sms) {
-    int rtn = 1;
-
-    string number = GetXMLStr(sms, "from", "");
-    int r = 0;
-    for(auto& it : m_SmsInXMLCallback) {
-        if(it.fn) {
-            string replay;
-            int r = it.fn(sms, replay, it.userdata);
-            if(!replay.empty()) {
-                SendSms(number, replay);
-            }
-            if(r < 0)
-                rtn = r;
-            if(r)
-                break;
-        }
-    }
-    if(!r && !m_SmsInCallback.empty()) {
-        string text = sms.getText();
-        for(auto& it : m_SmsInCallback) {
-            if(it.fn) {
-                string replay;
-                int r = it.fn(number, text, replay, it.userdata);
-                if(!replay.empty())
-                    SendSms(number, replay);
-                if(r < 0)
-                    rtn = 0;
-                if(r)
-                    break;
-            }
-        }
-    }
-    return rtn;
-}
 
 int CSmsDaemon::Do() {
     for(;;) {

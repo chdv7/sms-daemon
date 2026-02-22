@@ -20,12 +20,12 @@ static int strnicmp(const char* s1, const char* s2, int maxlen) {
     return 0;
 }
 
-const char* GetXMLStr(XMLNode& n, const char* name, const char* def) {
+const char* GetXMLStr(const XMLNode& n, const char* name, const char* def) {
     const char* v = n.getAttribute(name);
     return v ? v : def;
 }
 
-int GetXMLInt(XMLNode& n, const char* name, int def) {
+int GetXMLInt(const XMLNode& n, const char* name, int def) {
     const char* v = n.getAttribute(name);
     if(!v)
         return def;

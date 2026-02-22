@@ -6,8 +6,8 @@
 
 #include "xmlParser.h"
 
-const char* GetXMLStr(XMLNode& n, const char* name, const char* def);
-int GetXMLInt(XMLNode& n, const char* name, int def);
+const char* GetXMLStr(const XMLNode& n, const char* name, const char* def);
+int GetXMLInt(const XMLNode& n, const char* name, int def);
 int UTF8ToUnicode(wchar_t* d, const char* src, int sz);
 
 std::string toLocalTime(time_t);

@@ -5,4 +5,7 @@ build/*
 sms-daemon
 sms-send
 doc/*
+build/*
+build.sav/*
+*.xml
 
