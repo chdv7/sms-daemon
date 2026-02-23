@@ -31,6 +31,7 @@ set(SMS_CORE_SOURCES
     ${SRC_DIR}/xmlParser.cpp
     ${SRC_DIR}/RecvSMS.cpp
     ${SRC_DIR}/ut.cpp
+    ${SRC_DIR}/gen-xml.cpp
 )
 
 add_library(sms-core STATIC ${SMS_CORE_SOURCES})

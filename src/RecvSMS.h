@@ -9,7 +9,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include "xmlParser.h"
 
 using namespace std;
 
@@ -36,7 +35,6 @@ public:
     uint8_t m_nParts{};
     uint8_t m_nRefNr{};
     time_t m_RecvTime{};
-    XMLNode GenXML(bool debugFlag = false) const;
     smsCacheKey getKey() const {
         return {m_nRefNr, m_From};
     }
@@ -87,7 +85,6 @@ public:
         init();
     }
     ReceivedSMS(std::vector<std::unique_ptr<CRecvSMSPart>>&& parts, const std::string& m_Interface);
-    XMLNode GenXML(bool includeParts = false, bool debugFlag = false) const;
     std::wstring m_sText{};
     std::wstring_view m_From{};
     std::wstring_view m_SMSC{};

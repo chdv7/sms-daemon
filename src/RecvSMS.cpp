@@ -401,34 +401,6 @@ int CRecvSMSProcessor::processPDU(const char* pdu) {
     return 0;
 }
 
-XMLNode CRecvSMSPart::GenXML(bool debugFlag) const {
-    XMLNode xPart = XMLNode::createXMLTopNode("Part");
-
-    char tmp1024[1024];
-
-    xPart.addAttribute("From", toUTF8(m_From).c_str());
-
-    sprintf(tmp1024, "%02X", m_nRefNr);
-    xPart.addAttribute("ref", tmp1024);
-
-    sprintf(tmp1024, "%d", m_nPartNo);
-    xPart.addAttribute("partno", tmp1024);
-
-    xPart.addAttribute("time", m_TimeStamp.c_str());
-    xPart.addAttribute("smsc", toUTF8(m_SMSC).c_str());
-
-    xPart.addAttribute("ReceiveTime", toLocalTime(m_RecvTime).c_str());
-
-    sprintf(tmp1024, "%d", m_nParts);
-    xPart.addAttribute("nparts", tmp1024);
-
-    if(debugFlag)
-        xPart.addAttribute("raw", m_RawText.c_str());
-
-    xPart.addText(toUTF8(m_sText).c_str());
-    return xPart;
-}
-
 ReceivedSMS::ReceivedSMS(std::vector<std::unique_ptr<CRecvSMSPart>>&& cachedParts, const std::string& m_Interface)
     : m_RecvTime(time(nullptr)), m_Interface(m_Interface) {
     parts = std::move(cachedParts);
@@ -458,33 +430,6 @@ void ReceivedSMS::init() {
             missed = true;
         }
     }
-}
-
-XMLNode ReceivedSMS::GenXML(bool includeParts, bool debugFlag) const {
-    XMLNode xSms = XMLNode::createXMLTopNode("Sms");
-    char tmp1024[1024];
-
-    xSms.addAttribute("From", toUTF8(m_From).c_str());
-
-    xSms.addAttribute("time", m_TimeStamp.data());
-    xSms.addAttribute("smsc", toUTF8(m_SMSC).c_str());
-
-    xSms.addAttribute("ReceiveTime", toLocalTime(m_RecvTime).c_str());
-
-    xSms.addAttribute("status", isOk ? "Received" : "Bad");
-    xSms.addAttribute("Interface", m_Interface.c_str());
-    sprintf(tmp1024, "%d", m_nParts);
-    xSms.addAttribute("nParts", tmp1024);
-
-    xSms.addText(toUTF8(m_sText).c_str());
-    if(includeParts)
-        for(const auto& part : parts) {
-            if(!part)
-                continue;
-            auto xPart = part->GenXML(debugFlag);
-            xSms.addChild(xPart);
-        }
-    return xSms;
 }
 
 int CRecvSMSProcessor::ProcessPart(std::unique_ptr<CRecvSMSPart> pSms) {

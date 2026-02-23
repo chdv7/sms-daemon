@@ -7,7 +7,7 @@
 #include <chrono>
 
 #include <iostream>
-
+#include "gen-xml.hpp"
 #include "sms-daemon-mdm.h"
 #include "ut.h"
 
@@ -81,7 +81,7 @@ int main(int argc, char* argv[]) {
             return 0;
         });
         daemon.RegisterInSmsCallBack ([](const ReceivedSMS& sms){
-            auto xml = sms.GenXML(true, true);
+            auto xml = GenXML(sms, true, true);
             char buf[100];
             sprintf(buf, "./SMS-%016llX.xml", std::chrono::system_clock::now().time_since_epoch().count());
             xml.writeToFile(buf);
