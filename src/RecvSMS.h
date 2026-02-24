@@ -9,7 +9,7 @@
 #include <unordered_map>
 #include <vector>
 
-
+namespace chdv::sms_daemon {
 using namespace std;
 
 #define MAX_SMS_TIME (15 * 24 * 3600) // 15 days
@@ -121,3 +121,4 @@ protected:
     int64_t m_LastProcessedItemID;
     std::string m_sCachePath;
 };
+} //namespace chdv::sms_daemon

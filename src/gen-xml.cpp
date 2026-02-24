@@ -1,7 +1,7 @@
 #include "gen-xml.hpp"
 #include "RecvSMS.h"
 #include "ut.h"
-
+namespace chdv::sms_daemon {
 XMLNode GenXML(const CRecvSMSPart& part, bool debugFlag) {
     XMLNode xPart = XMLNode::createXMLTopNode("Part");
 
@@ -56,3 +56,4 @@ XMLNode GenXML(const ReceivedSMS& sms, bool includeParts, bool debugFlag) {
         }
     return xSms;
 }
+} // namespace chdv::sms_daemon

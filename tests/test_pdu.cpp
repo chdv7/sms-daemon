@@ -3,7 +3,7 @@
 
 // твой заголовок, путь подстрой
 #include "../src/PduSMS.h"
-
+namespace chdv::sms_daemon::test {
 TEST(PduSmsTest, SimpleSMS_7bit){
     auto result = COutPduSms ("+70123456789", "Test").ParseText();
     EXPECT_EQ(1,result.size());
@@ -67,3 +67,4 @@ TEST(PduSmsTest, Multipart2_SMS_7bit){
                          "584C36A3D56C375C0E1693CD6835DB0D9783C564335ACD76C3E56031D98C56B3DD70");
     EXPECT_EQ(result[1], "0041000B910721436587F900001505000378020272B0986C46ABD96EB85CD14D06");
 }
+} // namespace chdv::sms_daemon::test

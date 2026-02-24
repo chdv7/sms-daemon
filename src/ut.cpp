@@ -10,6 +10,7 @@
 #include <sstream>
 #include <string>
 
+
 static int strnicmp(const char* s1, const char* s2, int maxlen) {
     for(; maxlen > 0; --maxlen, ++s1, ++s2) {
         if(*s1 != *s2)

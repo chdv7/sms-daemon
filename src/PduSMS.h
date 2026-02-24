@@ -1,7 +1,7 @@
 #pragma once
 #include <string>
 #include <vector>
-
+namespace chdv::sms_daemon {
 using TOutPduBlock = std::vector<std::string>;
 class COutPduSms {
     enum PDU_EncodingScheme { PDU_7 = 0, PDU_8, PDU_16 };
@@ -38,3 +38,4 @@ public:
     bool m_bDisable8Bit;
     unsigned char m_nReference;
 };
+} // namespace chdv::sms_daemon 

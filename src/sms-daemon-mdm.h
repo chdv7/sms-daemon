@@ -9,6 +9,7 @@
 #include "rsserial.h"
 #include "sms-daemon-config.h"
 
+namespace chdv::sms_daemon {
 using SmsCallBack = std::function <int (const ReceivedSMS&)>;
 
 constexpr int maxSmsIndex = 128;
@@ -65,3 +66,4 @@ public:
         int ErrorCode;
     };
 };
+} //namespace chdv::sms_daemon

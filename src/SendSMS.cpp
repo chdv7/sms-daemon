@@ -7,7 +7,7 @@
 #include "PduSMS.h"
 
 #define OUT_SMS_DIR "/var/spool/sms/outsms"
-
+using namespace chdv::sms_daemon;
 void Usage() {
     printf(
         "\
