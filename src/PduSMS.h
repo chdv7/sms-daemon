@@ -1,10 +1,20 @@
 #pragma once
+
 #include <string>
 #include <vector>
+
 namespace chdv::sms_daemon {
+
 using TOutPduBlock = std::vector<std::string>;
+
+struct TUssdRequest {
+    std::string payload;
+    int dcs;
+};
+
 class COutPduSms {
     enum PDU_EncodingScheme { PDU_7 = 0, PDU_8, PDU_16 };
+
     std::string m_sPone;
     std::wstring m_sText;
 
@@ -12,24 +22,36 @@ public:
     COutPduSms(void);
     COutPduSms(const char* phone, const wchar_t* text);
     COutPduSms(const char* phone, const char* text, bool isUTF8 = true);
+
     void SetPhoneNumber(const char* phoneNo) {
         m_sPone = phoneNo;
     }
+
     void AddText(const wchar_t* text) {
         m_sText += text;
     }
-    void ForceUnicode (bool force = true) {m_bForceUnicode = force;};
-    void SetRefNo (unsigned char ref) {m_nReference = ref;};
+
+    void ForceUnicode(bool force = true) {
+        m_bForceUnicode = force;
+    }
+    void SetRefNo(unsigned char ref) {
+        m_nReference = ref;
+    }
 
     void AddText(const char* text, bool isUTF8);
     ~COutPduSms(void);
+
     TOutPduBlock ParseText(void);
+
+    // USSD helpers.
+    TUssdRequest ParseUssd() const;
+    std::string MakeCusdCommand() const;
 
 private:
     std::string MakeSmsSubmitHeader(bool isHasUDH, PDU_EncodingScheme encodingScheme);
 
 public:
-    // flags can be set if need
+    // Flags can be set if needed.
     bool m_bForceUDH;
     bool m_bFlash;
     bool m_bRRq;
@@ -38,4 +60,5 @@ public:
     bool m_bDisable8Bit;
     unsigned char m_nReference;
 };
-} // namespace chdv::sms_daemon 
+
+} // namespace chdv::sms_daemon
