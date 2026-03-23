@@ -19,8 +19,9 @@
 #include "sms-daemon.h"
 #include "ut.h"
 
-using namespace std;
 
+using namespace std;
+namespace chdv::sms_daemon {
 //#define __DO_NOT_DEL_SMS__
 
 static const char* answers[] = {"OK\r", "ERROR\r", NULL};
@@ -301,3 +302,4 @@ int CSmsDaemon::SendSms(std::string number, std::string text, int flags) {
     }
     return 0;
 }
+} // namespace chdv::sms_daemon {

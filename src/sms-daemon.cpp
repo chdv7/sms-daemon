@@ -74,13 +74,13 @@ int main(int argc, char* argv[]) {
         }
     }
     try {
-        CSmsDaemon daemon;
+        chdv::sms_daemon::CSmsDaemon daemon;
         daemon.Setup();
-        daemon.RegisterInSmsCallBack ([](const ReceivedSMS& sms){
-            cout << "SMS From:" << toUTF8(sms.m_From) << " Parts:" << sms.m_nParts << " Text:" << toUTF8(sms.m_sText) << std::endl;
+        daemon.RegisterInSmsCallBack ([](const chdv::sms_daemon::ReceivedSMS& sms){
+            std::cout << "SMS From:" << toUTF8(sms.m_From) << " Parts:" << sms.m_nParts << " Text:" << toUTF8(sms.m_sText) << std::endl;
             return 0;
         });
-        daemon.RegisterInSmsCallBack ([](const ReceivedSMS& sms){
+        daemon.RegisterInSmsCallBack ([](const chdv::sms_daemon::ReceivedSMS& sms){
             auto xml = GenXML(sms, true, true);
             char buf[100];
             sprintf(buf, "./SMS-%016llX.xml", std::chrono::system_clock::now().time_since_epoch().count());
@@ -93,7 +93,7 @@ int main(int argc, char* argv[]) {
         //" + text; return 0; });
         daemon.Go();
     }
-    catch(CSmsDaemon::SmsDaemonError& e) {
+    catch(chdv::sms_daemon::CSmsDaemon::SmsDaemonError& e) {
         std::cerr << "Critical error. Code: " << e.ErrorCode << " \"" << e.Verbose << "\"" << std::endl;
     }
 

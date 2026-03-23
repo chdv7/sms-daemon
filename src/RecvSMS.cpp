@@ -7,7 +7,7 @@
 #include <time.h>
 
 #include "ut.h"
-
+namespace chdv::sms_daemon {
 #define ASSERT(a)
 
 static bool const HexDecChars[128] = {
@@ -317,10 +317,10 @@ int CRecvSMSPart::ProcessRecvPDU(std::string rawText) {
 
     if(strlen(sms) < 14)
         return -3;
-    m_TimeStamp = ::GetTimeStamp(sms);
+    m_TimeStamp = GetTimeStamp(sms);
     sms += 14;
 
-    int udl = ::GetInt(sms);
+    int udl = GetInt(sms);
     if(udl < 0)
         return udl;
 
@@ -354,7 +354,7 @@ int CRecvSMSPart::ProcessRecvPDU(std::string rawText) {
                 sms += 2;
             }
         }
-        m_sText += ::decode7bit(sms, udl, first_chr_of_7bitSMS);
+        m_sText += decode7bit(sms, udl, first_chr_of_7bitSMS);
     } break;
     case 0x04: {
         char buffer[512];
@@ -479,3 +479,4 @@ void CRecvSMSProcessor::clearCache() {
         cache.erase(entryKey);
     }
 }
+} // namespace chdv::sms_daemon

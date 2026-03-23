@@ -6,8 +6,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-
+#include "ut.h"
 typedef unsigned short Uchar;
+namespace chdv::sms_daemon {
 #pragma pack(push, 1)
 
 struct T_UDH {
@@ -186,7 +187,7 @@ COutPduSms::~COutPduSms(void) {
 
 void COutPduSms::AddText(const char* text, bool isUTF8) {
     if(isUTF8) {
-        m_sText = ::UTF8ToUnicode(text);
+        m_sText = UTF8ToUnicode(text);
     }
     else { // 8 bit plain text
         int len = strlen(text);
@@ -445,3 +446,4 @@ TOutPduBlock COutPduSms::ParseText(void) {
     }
     return outList;
 }
+} // namespace chdv::sms_daemon
