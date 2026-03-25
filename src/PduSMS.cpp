@@ -28,8 +28,8 @@ struct T_UDH {
 
 #pragma pack(pop)
 
-static const unsigned char MAX_TEXT_LEN[3] = {160, 140, 70};
-static const unsigned char UdhLenInChars[3] = {7, 6, 3};
+static const size_t kMaxTextLenByMode[3] = {160, 140, 70};
+static const size_t kUdhLenInChars[3] = {7, 6, 3};
 
 namespace {
 unsigned char gReference(static_cast<unsigned char>(time(nullptr)));
@@ -209,7 +209,7 @@ void COutPduSms::AddText(const char* text, bool isUTF8) {
         m_sText = UTF8ToUnicode(text);
     }
     else { // 8 bit plain text
-        const int len = static_cast<int>(strlen(text));
+        const auto len = strlen(text);
         m_sText.reserve(len + 5);
         while(*text) {
             m_sText += *reinterpret_cast<const unsigned char*>(text++);
@@ -222,8 +222,8 @@ std::string ClearPhoneNo(std::string text) {
         text.erase(text.begin());
     }
 
-    for(std::string::iterator it = text.begin(); it != text.end(); ++it) {
-        if(!std::isdigit(static_cast<unsigned char>(*it))) {
+    for(auto it = text.begin(); it != text.end(); ++it) {
+        if(!std::isdigit(*it)) {
             text.erase(it, text.end());
             break;
         }
@@ -299,6 +299,7 @@ std::string COutPduSms::MakeSmsSubmitHeader(bool isHasUDH, PDU_EncodingScheme en
     unsigned char tp_dcs = 0;
     switch(encodingScheme) {
     case PDU_7:
+        //tp_dcs=0;
         break;
     case PDU_8:
         tp_dcs |= 4;
@@ -401,14 +402,14 @@ TOutPduBlock COutPduSms::ParseText(void) {
     if(!sText.length()) {
         sText += L' ';
     }
-
-    PDU_EncodingScheme encodingScheme = PDU_7;
+    // Choice encoding scheme
+    PDU_EncodingScheme encodingScheme = PDU_7; // default is 7 bit
     std::wstring sms7BitText;
 
     if(m_bForceUnicode) {
         encodingScheme = PDU_16;
     }
-    else {
+    else {  // Scan message for unicode characters
         bool is_8bit_found = false;
         bool is_16bit_found = false;
 
@@ -417,8 +418,8 @@ TOutPduBlock COutPduSms::ParseText(void) {
                 is_16bit_found = true;
                 break;
             }
-
-            const unsigned char code = lookup7Bit[static_cast<unsigned char>(chr)];
+ //          chr <=255
+            auto code = lookup7Bit[static_cast<unsigned char>(chr)];
             if(code == 0xff) {
                 is_8bit_found = true;
             }
@@ -426,10 +427,10 @@ TOutPduBlock COutPduSms::ParseText(void) {
             if(!is_8bit_found) {
                 if(code >= 0x80) {
                     sms7BitText += 0x1b; // ESC
-                    sms7BitText += (code & 0x7f);
+                    sms7BitText += (code & 0x7f); 
                 }
                 else {
-                    sms7BitText += code;
+                    sms7BitText += code; // adding clear code, code after ESC
                 }
             }
         }
@@ -445,22 +446,28 @@ TOutPduBlock COutPduSms::ParseText(void) {
             encodingScheme = m_bDisable8Bit ? PDU_16 : PDU_8;
         }
         else {
+            // well 7 bit coding is OK for the message. 160(153) characters
+              // per SMS will be used
             sText = sms7BitText;
         }
     }
 
-    int textLen = static_cast<int>(sText.length());
-    int maxPartSize = MAX_TEXT_LEN[encodingScheme];
+    auto textLen = sText.length();
+    size_t maxPartSize = kMaxTextLenByMode[encodingScheme];
     const bool hasUDH = m_bForceUDH || m_bRRq || (textLen > maxPartSize);
 
     if(hasUDH) {
-        maxPartSize -= UdhLenInChars[encodingScheme];
+        maxPartSize -= kUdhLenInChars[encodingScheme];
     }
 
-    const int nParts = (textLen - 1) / maxPartSize + 1;
+    const size_t nParts = textLen ? (textLen - 1) / maxPartSize + 1 : 1;
+    //	TODO: check for max SMS parts
+    //	if (nParts > 255) ...
 
     const std::string smsPartHdr = MakeSmsSubmitHeader(hasUDH, encodingScheme);
-
+// Header is common for all parts of SMS (next 
+// byte is TP-USER-DATA-LENGTH
+ //	TRACE ("%s\n", smsPartHdr.c_str());
     const wchar_t* txt = sText.c_str();
 
     T_UDH udh = {5, 0, 3, m_nReference, static_cast<unsigned char>(nParts), 0};
@@ -471,28 +478,32 @@ TOutPduBlock COutPduSms::ParseText(void) {
         std::string smsText = smsPartHdr;
 
         unsigned char partSZ = static_cast<unsigned char>(std::min(textLen, maxPartSize));
-        unsigned char dataSZ = hasUDH ? (partSZ + UdhLenInChars[encodingScheme]) : partSZ;
+        unsigned char dataSZ = hasUDH ? (partSZ + kUdhLenInChars[encodingScheme]) : partSZ;
 
         if(encodingScheme == PDU_16) {
             dataSZ <<= 1;
         }
 
-        smsText += BinToText(dataSZ);
+        smsText += BinToText(dataSZ); // UDL in bytes including UDH for 7 bit
+                                      // encoding UDL is	in septets
 
         if(hasUDH) {
             udh.thisPart = iPart + 1;
             smsText += BinToText(reinterpret_cast<unsigned char*>(&udh), sizeof(udh));
 
-            if(encodingScheme == PDU_7) {
+            if(encodingScheme == PDU_7) {  // manual boudary correction
                 if(textLen > 0) {
                     const unsigned char chr = static_cast<unsigned char>(*txt++) & 0x7f;
-                    smsText += BinToText(chr << 1);
+                    smsText += BinToText(chr << 1); // insert 1 8-bit character as is.
+                                                    // it result inserting 1 more zero bit
+                                                    // to close first 8->7 byte step
+                                                    // 6 bytes UDH + 1 text byte = 7 bytes is emited
 
                     partSZ--;
                     textLen--;
                 }
                 else {
-                    smsText += '0';
+                    smsText += '0'; // no data - insert empty
                 }
             }
         }
