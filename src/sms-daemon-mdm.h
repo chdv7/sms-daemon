@@ -6,11 +6,13 @@
 #include <vector>
 
 #include "RecvSMS.h"
+#include "Ussd.h"
 #include "rsserial.h"
 #include "sms-daemon-config.h"
 
 namespace chdv::sms_daemon {
 using SmsCallBack = std::function <int (const ReceivedSMS&)>;
+using UssdCallBack = std::function<int(const ReceivedUssd&)>;
 
 constexpr int maxSmsIndex = 128;
 class CSmsDaemon {
@@ -28,6 +30,8 @@ class CSmsDaemon {
     };
 
     std::vector<SmsCallBack> m_SmsInCallback;
+    std::vector<UssdCallBack> m_UssdInCallback;
+    std::string m_ModemInputBuffer;
 
     std::array<bool, maxSmsIndex> m_DirtySimSlots;
     std::string m_DeviceName{DEVICE};
@@ -40,6 +44,9 @@ class CSmsDaemon {
     void Init();
     int Do();
     void DoProcessInSmsBlock();
+    void DoProcessModemInput();
+    void ProcessModemInput(const std::string& input);
+    int SendUssd(const std::string& request);
     TSmsBlock GetSmsBlockFromModem();
     TSmsBlock GetSmsBlockByCMGR();
     TSmsBlock GetSmsBlockByCMGL();
@@ -57,6 +64,9 @@ public:
     int Go();
     void RegisterInSmsCallBack(SmsCallBack fn) {
         m_SmsInCallback.emplace_back(fn);
+    }
+    void RegisterInUssdCallBack(UssdCallBack fn) {
+        m_UssdInCallback.emplace_back(fn);
     }
 
     struct SmsDaemonError {

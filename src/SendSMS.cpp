@@ -3,16 +3,15 @@
 #include <unistd.h>
 
 #include <chrono>
+#include <cstring>
 
 #include "PduSMS.h"
 
 #define OUT_SMS_DIR "/var/spool/sms/outsms"
 using namespace chdv::sms_daemon;
 void Usage() {
-    printf(
-        "\
-Usage: nv-send-sms <phoneNo> [<out folder>]\n\
-");
+    printf("Usage: sms-send <phoneNo> [<out folder>] < message.txt\n"
+           "       sms-send <ussd-code> [<out folder>]\n");
 }
 
 std::string GenUniqueID() {
@@ -61,6 +60,12 @@ int GenSMS(const char* phoneNo, const char* dir) {
     return 0;
 }
 
+int GenUssd(const char* request, const char* dir) {
+    std::string job = "USSD:";
+    job += request;
+    return SaveSMS(job.c_str(), dir);
+}
+
 int main(int argc, char* argv[]) {
     if(argc < 2) {
         Usage();
@@ -80,5 +85,8 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    size_t phoneLen = strlen(phone_No);
+    if(phoneLen > 1 && (*phone_No == '*' || *phone_No == '#') && phone_No[phoneLen - 1] == '#')
+        return GenUssd(phone_No, out_dir);
     return GenSMS(phone_No, out_dir);
 }

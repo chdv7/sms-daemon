@@ -1,5 +1,6 @@
 #include "gen-xml.hpp"
 #include "RecvSMS.h"
+#include "Ussd.h"
 #include "ut.h"
 namespace chdv::sms_daemon {
 XMLNode GenXML(const CRecvSMSPart& part, bool debugFlag) {
@@ -43,7 +44,7 @@ XMLNode GenXML(const ReceivedSMS& sms, bool includeParts, bool debugFlag) {
 
     xSms.addAttribute("status", sms.isOk ? "Received" : "Bad");
     xSms.addAttribute("Interface", sms.m_Interface.c_str());
-    sprintf(tmp, "%d", sms.m_nParts);
+    sprintf(tmp, "%zu", sms.m_nParts);
     xSms.addAttribute("nParts", tmp);
 
     xSms.addText(toUTF8(sms.m_sText).c_str());
@@ -55,5 +56,21 @@ XMLNode GenXML(const ReceivedSMS& sms, bool includeParts, bool debugFlag) {
             xSms.addChild(xPart);
         }
     return xSms;
+}
+
+XMLNode GenXML(const ReceivedUssd& ussd, bool debugFlag) {
+    XMLNode xUssd = XMLNode::createXMLTopNode("Ussd");
+    char tmp[32];
+
+    sprintf(tmp, "%d", ussd.mode);
+    xUssd.addAttribute("mode", tmp);
+    sprintf(tmp, "%d", ussd.dcs);
+    xUssd.addAttribute("dcs", tmp);
+    xUssd.addAttribute("ReceiveTime", toLocalTime(ussd.receiveTime).c_str());
+    xUssd.addAttribute("Interface", ussd.interface.c_str());
+    if(debugFlag)
+        xUssd.addAttribute("raw", ussd.raw.c_str());
+    xUssd.addText(ussd.text.c_str());
+    return xUssd;
 }
 } // namespace chdv::sms_daemon
