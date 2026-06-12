@@ -100,11 +100,39 @@ void CSmsDaemon::Init() {
 
 int CSmsDaemon::Do() {
     for(;;) {
+        DoProcessModemInput();
         DoProcessInSmsBlock();
         DoProcessOutSmsFolder();
         Sleep(m_LoopDelay);
     }
     return 0;
+}
+
+void CSmsDaemon::DoProcessModemInput() {
+    for(;;) {
+        int chr = m_Connector.ReceiveChar();
+        if(chr < 0)
+            break;
+        m_ModemInputBuffer += static_cast<char>(chr);
+    }
+
+    size_t end = 0;
+    while((end = m_ModemInputBuffer.find('\n')) != std::string::npos) {
+        std::string line = m_ModemInputBuffer.substr(0, end);
+        m_ModemInputBuffer.erase(0, end + 1);
+        if(!line.empty() && line.back() == '\r')
+            line.pop_back();
+        ProcessModemInput(line);
+    }
+}
+
+void CSmsDaemon::ProcessModemInput(const std::string& input) {
+    ReceivedUssd ussd;
+    if(!ParseUssdResponse(input, ussd))
+        return;
+    ussd.interface = m_DeviceName;
+    for(auto& cb : m_UssdInCallback)
+        cb(ussd);
 }
 
 void CSmsDaemon::DoProcessInSmsBlock() {
@@ -125,6 +153,7 @@ CSmsDaemon::TSmsBlock CSmsDaemon::GetSmsBlockByCMGR() {
         sprintf(command, "AT+CMGR=%d\r", i);
         char log[1000];
         rtn.err = m_Connector.SendExpect(command, answers, 1000, log, sizeof(log));
+        ProcessModemInput(log);
         if(rtn.err) {
             if(!rtn.sms.empty())
                 rtn.err = 0;
@@ -155,6 +184,7 @@ CSmsDaemon::TSmsBlock CSmsDaemon::GetSmsBlockByCMGL() {
     TSmsBlock rtn;
     char log[50 * 1024];
     rtn.err = m_Connector.SendExpect("AT+CMGL=4\r", answers, 3000, log, sizeof log);
+    ProcessModemInput(log);
     cout << "AT+CMGL=4: " << log << endl << endl;
     if(rtn.err) {
         fprintf(stderr, "+CMGL Error %d\n", rtn.err);
@@ -210,7 +240,9 @@ bool CSmsDaemon::DelSms(int smsIndex) {
     char command[100];
     sprintf(command, "at+cmgd=%d,0\r", smsIndex);
 
-    int err = m_Connector.SendExpect(command, answers, 2000);
+    char log[1024] = "";
+    int err = m_Connector.SendExpect(command, answers, 2000, log, sizeof(log));
+    ProcessModemInput(log);
 
     if(err)
         fprintf(stderr, "+CMGD error %d\n", err);
@@ -229,10 +261,12 @@ void CSmsDaemon::DelSmsBlock(vector<TMdmRcvSms> block) {
 }
 
 int CSmsDaemon::SendUssd(std::string_view ussd) {
-    std::string cmd ("AT+CUSD=1,");
+    std::string cmd("AT+CUSD=1,");
     cmd += ussd;
-    cmd +='\r';
-    auto err = m_Connector.SendExpect(cmd.c_str(), answers);
+    cmd += '\r';
+    char log[4096] = "";
+    auto err = m_Connector.SendExpect(cmd.c_str(), answers, 5000, log, sizeof(log));
+    ProcessModemInput(log);
     if (err){
         m_Connector.Puts("\r\r", 10);
         std::cout << "Error in : " << cmd << " code:" << err << std::endl;
@@ -254,12 +288,14 @@ int CSmsDaemon::SendSmsPart(std::string pdu) {
         char cmd[200];
         char log[1024];
         memset(log, 0, sizeof(log));
-        sprintf(cmd, "AT+CMGS=%u\r", pdu.length() / 2 - 1);
+        sprintf(cmd, "AT+CMGS=%zu\r", pdu.length() / 2 - 1);
         err = m_Connector.SendExpect(cmd, answers_go, 1000, log, sizeof(log));
+        ProcessModemInput(log);
         if(!err) {
             pdu += "\x1a";
             memset(log, 0, sizeof(log));
             err = m_Connector.SendExpect(pdu.c_str(), answers, 20000, log, sizeof(log));
+            ProcessModemInput(log);
         }
         if(!err)
             m_Connector.Puts("\r\r", 10);
@@ -302,7 +338,7 @@ void CSmsDaemon::DoProcessOutSmsFolder() {
                 err = SendSmsPart(buf);
             cout << err << " ";
             if(err) {
-                string outStr(string("Can not send SMS ") + entry->d_name);
+                string outStr(string("Can not process job ") + entry->d_name);
                 fprintf(stderr, "%s\n", outStr.c_str());
                 fprintf(stderr, "Error code:%d\n", err);
             }

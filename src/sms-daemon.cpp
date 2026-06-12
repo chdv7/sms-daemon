@@ -83,12 +83,20 @@ int main(int argc, char* argv[]) {
         daemon.RegisterInSmsCallBack ([](const chdv::sms_daemon::ReceivedSMS& sms){
             auto xml = GenXML(sms, true, true);
             char buf[100];
-            sprintf(buf, "./SMS-%016llX.xml", std::chrono::system_clock::now().time_since_epoch().count());
+            sprintf(buf, IN_SMS_XML_DIR "/SMS-%016llX.xml", static_cast<unsigned long long>(std::chrono::system_clock::now().time_since_epoch().count()));
             xml.writeToFile(buf);
             return 0;
         });
 
-        //		daemon.RegisterInSmsCallBack([](const std::string number, const
+        daemon.RegisterInUssdCallBack([](const chdv::sms_daemon::ReceivedUssd& ussd) {
+            auto xml = GenXML(ussd, true);
+            char buf[160];
+            sprintf(buf, IN_SMS_XML_DIR "/USSD-%016llX.xml", static_cast<unsigned long long>(std::chrono::system_clock::now().time_since_epoch().count()));
+            xml.writeToFile(buf);
+            return 0;
+        });
+
+        // daemon.RegisterInSmsCallBack([](const std::string number, const
         // std::string text, std::string& replay, void* userdata) { replay = "OK
         //" + text; return 0; });
         daemon.Go();
