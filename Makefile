@@ -22,10 +22,14 @@ DAEMON_SOURCES_CPP = \
     rsserial.cpp \
     xmlParser.cpp \
     RecvSMS.cpp \
+    gen-xml.cpp \
+    Ussd.cpp \
+    Config.cpp \
     ut.cpp
 
 SENDER_SOURCES_CPP = \
     PduSMS.cpp \
+    Ussd.cpp \
     SendSMS.cpp
 
 SOURCES_CPP = $(DAEMON_SOURCES_CPP) $(SENDER_SOURCES_CPP)

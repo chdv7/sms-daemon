@@ -1,7 +1,9 @@
 #include <stdio.h>
 #include <sys/timeb.h>
 #include <unistd.h>
-
+#include <string>
+#include <iostream>
+#include <sstream>
 #include <chrono>
 
 #include "PduSMS.h"
@@ -57,8 +59,20 @@ int GenSMS(const char* phoneNo, const char* dir) {
         if(err < 0)
             printf("Saving error %d\n", err);
     }
-
     return 0;
+}
+
+int GenUSSD(const char* ussd, const char* dir) {
+ 
+    COutPduSms sms_processor("", ussd);
+    TUssdRequest ussdRq = sms_processor.ParseUssd();
+    std::stringstream out;
+    out << "U\"" << ussdRq.payload << "\","<< ussdRq.dcs;
+    int err = SaveSMS(out.str().c_str(), dir);
+    if(err < 0)
+         printf("Saving error %d\n", err);
+
+    return err;
 }
 
 int main(int argc, char* argv[]) {
@@ -79,6 +93,8 @@ int main(int argc, char* argv[]) {
             break;
         }
     }
-
-    return GenSMS(phone_No, out_dir);
+    if (*phone_No == '*')
+        return GenUSSD(phone_No, out_dir);
+    else
+        return GenSMS(phone_No, out_dir);
 }

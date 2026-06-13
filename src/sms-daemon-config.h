@@ -2,6 +2,7 @@
 
 #define IN_SMS_PATH             "./insms"
 #define IN_SMS_CACHE_NAME       "./sms-daemon-cacheSMS.xml"
+#define SMS_CONFIG_PATH         "./sms-daemon.conf"
 #define DEVICE 					"/dev/ttyUSB0"
 #define DEVICE_MDM			DEVICE
 

@@ -5,6 +5,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <chrono>
+#include <filesystem>
 
 #include <iostream>
 #include "gen-xml.hpp"
@@ -36,14 +37,25 @@ int main(int argc, char* argv[]) {
     chmod(IN_SMS_XML_DIR, 0777);
 
     int isdaemon = 0;
+    std::string configPath = SMS_CONFIG_PATH;
     for(int i = 1; i < argc; ++i) {
         if(!strcmp(argv[i], "--daemon")) {
             isdaemon = 1;
             printf("sms-daemon\n");
         }
-        else
-            printf("Test mode\n");
+        else if(!strcmp(argv[i], "--config")) {
+            if(++i >= argc) {
+                fprintf(stderr, "--config requires a file path\n");
+                return 1;
+            }
+            configPath = argv[i];
+        }
+        else {
+            fprintf(stderr, "Unknown argument: %s\n", argv[i]);
+            return 1;
+        }
     }
+    configPath = std::filesystem::absolute(configPath).string();
 
     if(isdaemon) {
         pid_t pid;
@@ -75,7 +87,7 @@ int main(int argc, char* argv[]) {
     }
     try {
         chdv::sms_daemon::CSmsDaemon daemon;
-        daemon.Setup();
+        daemon.Setup(configPath);
         daemon.RegisterInSmsCallBack ([](const chdv::sms_daemon::ReceivedSMS& sms){
             std::cout << "SMS From:" << toUTF8(sms.m_From) << " Parts:" << sms.m_nParts << " Text:" << toUTF8(sms.m_sText) << std::endl;
             return 0;
@@ -83,12 +95,20 @@ int main(int argc, char* argv[]) {
         daemon.RegisterInSmsCallBack ([](const chdv::sms_daemon::ReceivedSMS& sms){
             auto xml = GenXML(sms, true, true);
             char buf[100];
-            sprintf(buf, "./SMS-%016llX.xml", std::chrono::system_clock::now().time_since_epoch().count());
+            sprintf(buf, IN_SMS_XML_DIR "/SMS-%016llX.xml", static_cast<unsigned long long>(std::chrono::system_clock::now().time_since_epoch().count()));
             xml.writeToFile(buf);
             return 0;
         });
 
-        //		daemon.RegisterInSmsCallBack([](const std::string number, const
+        daemon.RegisterInUssdCallBack([](const chdv::sms_daemon::ReceivedUssd& ussd) {
+            auto xml = GenXML(ussd, true);
+            char buf[160];
+            sprintf(buf, IN_SMS_XML_DIR "/USSD-%016llX.xml", static_cast<unsigned long long>(std::chrono::system_clock::now().time_since_epoch().count()));
+            xml.writeToFile(buf);
+            return 0;
+        });
+
+        // daemon.RegisterInSmsCallBack([](const std::string number, const
         // std::string text, std::string& replay, void* userdata) { replay = "OK
         //" + text; return 0; });
         daemon.Go();
