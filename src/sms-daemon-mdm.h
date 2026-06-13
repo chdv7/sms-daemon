@@ -60,7 +60,7 @@ class CSmsDaemon {
 public:
     CSmsDaemon() {
     }
-    void Setup();
+    void Setup(const std::string& configPath = SMS_CONFIG_PATH);
     int Go();
     void RegisterInSmsCallBack(SmsCallBack fn) {
         m_SmsInCallback.emplace_back(fn);

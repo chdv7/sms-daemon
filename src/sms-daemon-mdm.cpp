@@ -16,6 +16,7 @@
 #include <iostream>
 #include <sstream>
 
+#include "Config.h"
 #include "PduSMS.h"
 #include "sms-daemon-config.h"
 #include "sms-daemon.h"
@@ -54,8 +55,13 @@ bool isHexDecChar(char chr) {
     return chr & 0x80 ? false : HexDecChars[(int)chr];
 }
 
-void CSmsDaemon::Setup() {
-    return;
+void CSmsDaemon::Setup(const std::string& configPath) {
+    SmsDaemonConfig config;
+    std::string error;
+    if(!LoadSmsDaemonConfig(configPath, config, error))
+        throw SmsDaemonError(-1, error);
+
+    m_DeviceName = config.device;
 }
 int CSmsDaemon::Go() {
     Init();

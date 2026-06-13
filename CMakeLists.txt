@@ -33,6 +33,7 @@ set(SMS_CORE_SOURCES
     ${SRC_DIR}/ut.cpp
     ${SRC_DIR}/gen-xml.cpp
     ${SRC_DIR}/Ussd.cpp
+    ${SRC_DIR}/Config.cpp
 )
 
 add_library(sms-core STATIC ${SMS_CORE_SOURCES})
@@ -73,6 +74,7 @@ if (BUILD_TESTING)
     add_executable(sms-tests
         tests/test_pdu.cpp
         tests/test_ussd.cpp
+        tests/test_config.cpp
         # сюда добавишь другие тестовые файлы по мере надобности
         # tests/test_serial.cpp
         # tests/test_xml.cpp

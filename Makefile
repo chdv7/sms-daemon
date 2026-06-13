@@ -24,6 +24,7 @@ DAEMON_SOURCES_CPP = \
     RecvSMS.cpp \
     gen-xml.cpp \
     Ussd.cpp \
+    Config.cpp \
     ut.cpp
 
 SENDER_SOURCES_CPP = \
