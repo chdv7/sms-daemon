@@ -13,6 +13,8 @@
 #include <chrono>
 #include <iostream>
 #include <string>
+#include <iostream>
+#include <sstream>
 
 #include "PduSMS.h"
 #include "sms-daemon-config.h"
@@ -226,6 +228,19 @@ void CSmsDaemon::DelSmsBlock(vector<TMdmRcvSms> block) {
     }
 }
 
+int CSmsDaemon::SendUssd(std::string_view ussd) {
+    std::string cmd ("AT+CUSD=1,");
+    cmd += ussd;
+    cmd +='\r';
+    auto err = m_Connector.SendExpect(cmd.c_str(), answers);
+    if (err){
+        m_Connector.Puts("\r\r", 10);
+        std::cout << "Error in : " << cmd << " code:" << err << std::endl;
+    }
+    return err;
+}
+
+
 int CSmsDaemon::SendSmsPart(std::string pdu) {
     int err = 0;
     if(pdu.size() > 4) {
@@ -278,8 +293,14 @@ void CSmsDaemon::DoProcessOutSmsFolder() {
             char buf[1024] = "";
             fgets(buf, sizeof(buf), f);
             fclose(f);
-            int err = strlen(buf) ? SendSmsPart(buf) : -100;
-            cout << err;
+            int err = 0;
+            if (!strlen(buf))
+                err = -100;
+            else if (*buf == 'U')
+                err = SendUssd(buf+1);
+            else 
+                err = SendSmsPart(buf);
+            cout << err << " ";
             if(err) {
                 string outStr(string("Can not send SMS ") + entry->d_name);
                 fprintf(stderr, "%s\n", outStr.c_str());

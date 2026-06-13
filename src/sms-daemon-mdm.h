@@ -46,6 +46,7 @@ class CSmsDaemon {
     int ProcessSmsBlock(TSmsBlock& smsBlock);
     void DoProcessOutSmsFolder();
     int SendSmsPart(std::string pdu);
+    int SendUssd(std::string_view ussd);
     int SendSms(std::string number, std::string text, int flags = 0);
     bool DelSms(int index);
     void DelSmsBlock(vector<TMdmRcvSms> sms);

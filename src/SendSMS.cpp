@@ -67,7 +67,7 @@ int GenUSSD(const char* ussd, const char* dir) {
     COutPduSms sms_processor("", ussd);
     TUssdRequest ussdRq = sms_processor.ParseUssd();
     std::stringstream out;
-    out << "U" << ussdRq.dcs << ","<< ussdRq.payload << std::endl;
+    out << "U\"" << ussdRq.payload << "\","<< ussdRq.dcs;
     int err = SaveSMS(out.str().c_str(), dir);
     if(err < 0)
          printf("Saving error %d\n", err);
