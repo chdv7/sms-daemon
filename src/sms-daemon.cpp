@@ -6,14 +6,31 @@
 #include <unistd.h>
 #include <chrono>
 #include <filesystem>
+#include <string>
 
 #include <iostream>
 #include "gen-xml.hpp"
 #include "sms-daemon-mdm.h"
 #include "ut.h"
 
+namespace {
+std::string g_LogFile = SMS_LOG_FILE;
+
+void CreateDir(const std::string& path) {
+    std::filesystem::create_directories(path);
+    chmod(path.c_str(), 0777);
+}
+} // namespace
+
+void SetLogPath(const std::string& path) {
+    g_LogFile = path;
+    std::filesystem::path logPath(path);
+    if(logPath.has_parent_path())
+        std::filesystem::create_directories(logPath.parent_path());
+}
+
 void Log(const char* text) {
-    FILE* f = fopen(SMS_LOG_FILE, "a");
+    FILE* f = fopen(g_LogFile.c_str(), "a");
     if(f) {
         fprintf(f, "SMS daemon: %s\n", text);
         fclose(f);
@@ -21,7 +38,7 @@ void Log(const char* text) {
 }
 
 void LogError(int code, const char* text) {
-    FILE* f = fopen(SMS_LOG_FILE, "a");
+    FILE* f = fopen(g_LogFile.c_str(), "a");
     if(f) {
         fprintf(f, "%d SMS daemon: %s\n", code, text);
         fclose(f);
@@ -31,24 +48,22 @@ void LogError(int code, const char* text) {
 int main(int argc, char* argv[]) {
     mkdir(SMS_TMP_DIR, 0777);
     chmod(SMS_TMP_DIR, 0777);
-    mkdir(OUT_SMS_DIR, 0777);
-    chmod(OUT_SMS_DIR, 0777);
-    mkdir(IN_SMS_XML_DIR, 0777);
-    chmod(IN_SMS_XML_DIR, 0777);
 
     int isdaemon = 0;
     std::string configPath = SMS_CONFIG_PATH;
+    bool configRequired = true;
     for(int i = 1; i < argc; ++i) {
         if(!strcmp(argv[i], "--daemon")) {
             isdaemon = 1;
             printf("sms-daemon\n");
         }
-        else if(!strcmp(argv[i], "--config")) {
+        else if(!strcmp(argv[i], "--config") || !strcmp(argv[i], "-c")) {
             if(++i >= argc) {
-                fprintf(stderr, "--config requires a file path\n");
+                fprintf(stderr, "%s requires a file path\n", argv[i - 1]);
                 return 1;
             }
             configPath = argv[i];
+            configRequired = true;
         }
         else {
             fprintf(stderr, "Unknown argument: %s\n", argv[i]);
@@ -87,23 +102,26 @@ int main(int argc, char* argv[]) {
     }
     try {
         chdv::sms_daemon::CSmsDaemon daemon;
-        daemon.Setup(configPath);
+        daemon.Setup(configPath, configRequired);
+        CreateDir(daemon.JobDir());
+        CreateDir(daemon.SmsInDir());
+        CreateDir(daemon.UssdInDir());
         daemon.RegisterInSmsCallBack ([](const chdv::sms_daemon::ReceivedSMS& sms){
             std::cout << "SMS From:" << toUTF8(sms.m_From) << " Parts:" << sms.m_nParts << " Text:" << toUTF8(sms.m_sText) << std::endl;
             return 0;
         });
-        daemon.RegisterInSmsCallBack ([](const chdv::sms_daemon::ReceivedSMS& sms){
-            auto xml = GenXML(sms, true, true);
-            char buf[100];
-            sprintf(buf, IN_SMS_XML_DIR "/SMS-%016llX.xml", static_cast<unsigned long long>(std::chrono::system_clock::now().time_since_epoch().count()));
+        daemon.RegisterInSmsCallBack ([&daemon](const chdv::sms_daemon::ReceivedSMS& sms){
+            auto xml = GenXML(sms, daemon.Debug(), daemon.Debug());
+            char buf[512];
+            sprintf(buf, "%s/SMS-%016llX.xml", daemon.SmsInDir().c_str(), static_cast<unsigned long long>(std::chrono::system_clock::now().time_since_epoch().count()));
             xml.writeToFile(buf, nullptr, true);
             return 0;
         });
 
-        daemon.RegisterInUssdCallBack([](const chdv::sms_daemon::ReceivedUssd& ussd) {
-            auto xml = GenXML(ussd, true);
-            char buf[160];
-            sprintf(buf, IN_SMS_XML_DIR "/USSD-%016llX.xml", static_cast<unsigned long long>(std::chrono::system_clock::now().time_since_epoch().count()));
+        daemon.RegisterInUssdCallBack([&daemon](const chdv::sms_daemon::ReceivedUssd& ussd) {
+            auto xml = GenXML(ussd, daemon.Debug());
+            char buf[512];
+            sprintf(buf, "%s/USSD-%016llX.xml", daemon.UssdInDir().c_str(), static_cast<unsigned long long>(std::chrono::system_clock::now().time_since_epoch().count()));
             xml.writeToFile(buf, nullptr, true);
             return 0;
         });
@@ -115,6 +133,7 @@ int main(int argc, char* argv[]) {
     }
     catch(chdv::sms_daemon::CSmsDaemon::SmsDaemonError& e) {
         std::cerr << "Critical error. Code: " << e.ErrorCode << " \"" << e.Verbose << "\"" << std::endl;
+        return e.ErrorCode > 0 ? e.ErrorCode : 1;
     }
 
     return 0;

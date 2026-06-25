@@ -1,19 +1,21 @@
 #include <stdio.h>
 #include <sys/timeb.h>
 #include <unistd.h>
+#include <string.h>
 #include <string>
 #include <iostream>
 #include <sstream>
 #include <chrono>
+#include <filesystem>
 
+#include "Config.h"
 #include "PduSMS.h"
 
-#define OUT_SMS_DIR "/var/spool/sms/outsms"
 using namespace chdv::sms_daemon;
 void Usage() {
     printf(
         "\
-Usage: nv-send-sms <phoneNo> [<out folder>]\n\
+Usage: sms-send [-c <config>] <phoneNo|ussd> [<out folder>]\n\
 ");
 }
 
@@ -81,18 +83,45 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     const char* phone_No = "";
-    const char* out_dir = OUT_SMS_DIR;
+    const char* out_dir = nullptr;
+    std::string configPath = SMS_CONFIG_PATH;
+    bool configRequired = true;
 
     for(int i = 1; i < argc; ++i) {
-        switch(i) {
-        case 1:
+        if(!strcmp(argv[i], "-c") || !strcmp(argv[i], "--config")) {
+            if(++i >= argc) {
+                fprintf(stderr, "%s requires a file path\n", argv[i - 1]);
+                return 1;
+            }
+            configPath = argv[i];
+            configRequired = true;
+        }
+        else if(!*phone_No) {
             phone_No = argv[i];
-            break;
-        case 2:
+        }
+        else if(!out_dir) {
             out_dir = argv[i];
-            break;
+        }
+        else {
+            Usage();
+            return 1;
         }
     }
+
+    if(!*phone_No) {
+        Usage();
+        return 1;
+    }
+
+    SmsDaemonConfig config;
+    std::string error;
+    if(!LoadSmsDaemonConfig(std::filesystem::absolute(configPath).string(), config, error, configRequired)) {
+        fprintf(stderr, "%s\n", error.c_str());
+        return 1;
+    }
+    if(!out_dir)
+        out_dir = config.jobDir.c_str();
+
     if (*phone_No == '*')
         return GenUSSD(phone_No, out_dir);
     else

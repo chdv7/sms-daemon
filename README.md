@@ -1,11 +1,19 @@
 # sms-daemon
 A small SMS and USSD sender/receiver.
 
-Configuration is read from `sms-daemon.conf` by default:
+Configuration is read from `/etc/sms-daemon/config.cfg` by default. The config file must exist; if a key is missing, the compiled default is used. Use another file with `-c`:
+
+    sms-daemon -c /path/to/config.cfg
+    sms-send -c /path/to/config.cfg '*100#'
+
+Supported config keys:
 
     device=/dev/ttyUSB0
-
-Use another file with `sms-daemon --config /path/to/sms-daemon.conf`.
+    job_dir=./outsms
+    sms_dir=/tmp/sms-daemon/ReceivedSMS
+    ussd_dir=/tmp/sms-daemon/ReceivedSMS
+    log_file=/tmp/sms-daemon/Log
+    debug=false
 
 Send an SMS body from stdin:
 
@@ -13,6 +21,6 @@ Send an SMS body from stdin:
 
 Send a USSD request:
 
-    sms-send '*100#' ./outsms
+    sms-send '*100#'
 
-USSD jobs are stored as `U"<encoded-payload>",<dcs>`. The daemon writes received SMS and USSD responses as XML files to `/tmp/sms-daemon/ReceivedSMS`.
+If `sms-send` is called without an output directory, it uses `job_dir` from the config. USSD jobs are stored as `U"<encoded-payload>",<dcs>`. The daemon writes received SMS and USSD responses as XML files to `sms_dir` and `ussd_dir`.

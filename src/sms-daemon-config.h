@@ -2,12 +2,12 @@
 
 #define IN_SMS_PATH             "./insms"
 #define IN_SMS_CACHE_NAME       "./sms-daemon-cacheSMS.xml"
-#define SMS_CONFIG_PATH         "./sms-daemon.conf"
+#define SMS_CONFIG_PATH         "/etc/sms-daemon/config.cfg"
 #define DEVICE 					"/dev/ttyUSB0"
 #define DEVICE_MDM			DEVICE
 
 #define DATA_PID_PATH       	"/tmp/sms-daemon.pid"
-#define OUT_SMS_DIR         	"./outsms"
+#define OUT_SMS_DIR         	"/tmp/sms-daemon/outsms"
 #define START_DELAY				2000
 #define SMS_TMP_DIR		"/tmp/sms-daemon"
 #define SMS_LOG_FILE	        SMS_TMP_DIR"/Log"

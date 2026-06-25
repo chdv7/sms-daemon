@@ -39,6 +39,10 @@ class CSmsDaemon {
     std::string m_DeviceName{DEVICE};
     std::string m_CachePath{IN_SMS_CACHE_NAME};
     std::string m_OutSmsMailDir{OUT_SMS_DIR};
+    std::string m_SmsInDir{IN_SMS_XML_DIR};
+    std::string m_UssdInDir{IN_SMS_XML_DIR};
+    std::string m_LogFile{SMS_LOG_FILE};
+    bool m_Debug{false};
     CRSSerial m_Connector;
     CRecvSMSProcessor m_RecvSMSProcessor;
     int m_LoopDelay{LOOP_SLEEP_MS};
@@ -60,9 +64,14 @@ class CSmsDaemon {
     void DelSmsBlock(vector<TMdmRcvSms> sms);
 
 public:
+    const std::string& SmsInDir() const { return m_SmsInDir; }
+    const std::string& UssdInDir() const { return m_UssdInDir; }
+    const std::string& JobDir() const { return m_OutSmsMailDir; }
+    const std::string& LogFile() const { return m_LogFile; }
+    bool Debug() const { return m_Debug; }
     CSmsDaemon() {
     }
-    void Setup(const std::string& configPath = SMS_CONFIG_PATH);
+    void Setup(const std::string& configPath = SMS_CONFIG_PATH, bool configRequired = true);
     int Go();
     void RegisterInSmsCallBack(SmsCallBack fn) {
         m_SmsInCallback.emplace_back(fn);
