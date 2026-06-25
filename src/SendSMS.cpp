@@ -122,7 +122,7 @@ int main(int argc, char* argv[]) {
     if(!out_dir)
         out_dir = config.jobDir.c_str();
 
-    if (*phone_No == '*')
+    if (*phone_No == '*' || *phone_No == '#')
         return GenUSSD(phone_No, out_dir);
     else
         return GenSMS(phone_No, out_dir);
