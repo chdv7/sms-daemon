@@ -56,13 +56,22 @@ bool isHexDecChar(char chr) {
     return chr & 0x80 ? false : HexDecChars[(int)chr];
 }
 
-void CSmsDaemon::Setup(const std::string& configPath) {
+void CSmsDaemon::Setup(const std::string& configPath, bool configRequired) {
     SmsDaemonConfig config;
     std::string error;
-    if(!LoadSmsDaemonConfig(configPath, config, error))
-        throw SmsDaemonError(-1, error);
 
+    std::cout << "Config: " << configPath << std::endl;
+
+    if(!LoadSmsDaemonConfig(configPath, config, error, configRequired))
+        throw SmsDaemonError(-1, error);
+    std::cout << config << std::endl;
     m_DeviceName = config.device;
+    m_OutSmsMailDir = config.jobDir;
+    m_SmsInDir = config.smsDir;
+    m_UssdInDir = config.ussdDir;
+    m_LogFile = config.logFile;
+    m_Debug = config.debug;
+    SetLogPath(m_LogFile);
 }
 int CSmsDaemon::Go() {
     Init();

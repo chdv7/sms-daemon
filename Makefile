@@ -30,6 +30,7 @@ DAEMON_SOURCES_CPP = \
 SENDER_SOURCES_CPP = \
     PduSMS.cpp \
     Ussd.cpp \
+    Config.cpp \
     SendSMS.cpp
 
 SOURCES_CPP = $(DAEMON_SOURCES_CPP) $(SENDER_SOURCES_CPP)

@@ -1,6 +1,8 @@
 #include "Config.h"
 
+#include <cerrno>
 #include <cctype>
+#include <cstring>
 #include <fstream>
 
 namespace chdv::sms_daemon {
@@ -16,12 +18,31 @@ std::string Trim(const std::string& value) {
     return value.substr(first, last - first);
 }
 
+bool ParseBool(const std::string& value, bool& result) {
+    std::string normalized;
+    normalized.reserve(value.size());
+    for(char ch : value)
+        normalized.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(ch))));
+
+    if(normalized == "1" || normalized == "true" || normalized == "yes" || normalized == "on") {
+        result = true;
+        return true;
+    }
+    if(normalized == "0" || normalized == "false" || normalized == "no" || normalized == "off") {
+        result = false;
+        return true;
+    }
+    return false;
+}
+
 } // namespace
 
-bool LoadSmsDaemonConfig(const std::string& path, SmsDaemonConfig& config, std::string& error) {
+bool LoadSmsDaemonConfig(const std::string& path, SmsDaemonConfig& config, std::string& error, bool required) {
     std::ifstream input(path);
     if(!input) {
-        error = "Can not open config file " + path;
+        if(!required)
+            return true;
+        error = "Can not open config file " + path + ": " + std::strerror(errno);
         return false;
     }
 
@@ -43,6 +64,20 @@ bool LoadSmsDaemonConfig(const std::string& path, SmsDaemonConfig& config, std::
         const std::string value = Trim(line.substr(separator + 1));
         if(key == "device")
             config.device = value;
+        else if(key == "job_dir")
+            config.jobDir = value;
+        else if(key == "sms_dir")
+            config.smsDir = value;
+        else if(key == "ussd_dir")
+            config.ussdDir = value;
+        else if(key == "log_file")
+            config.logFile = value;
+        else if(key == "debug") {
+            if(!ParseBool(value, config.debug)) {
+                error = path + ":" + std::to_string(lineNumber) + ": invalid boolean value for debug: " + value;
+                return false;
+            }
+        }
         else {
             error = path + ":" + std::to_string(lineNumber) + ": unknown setting " + key;
             return false;
@@ -51,6 +86,22 @@ bool LoadSmsDaemonConfig(const std::string& path, SmsDaemonConfig& config, std::
 
     if(config.device.empty()) {
         error = path + ": device must not be empty";
+        return false;
+    }
+    if(config.jobDir.empty()) {
+        error = path + ": job_dir must not be empty";
+        return false;
+    }
+    if(config.smsDir.empty()) {
+        error = path + ": sms_dir must not be empty";
+        return false;
+    }
+    if(config.ussdDir.empty()) {
+        error = path + ": ussd_dir must not be empty";
+        return false;
+    }
+    if(config.logFile.empty()) {
+        error = path + ": log_file must not be empty";
         return false;
     }
     return true;
