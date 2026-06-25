@@ -96,7 +96,7 @@ int main(int argc, char* argv[]) {
             auto xml = GenXML(sms, true, true);
             char buf[100];
             sprintf(buf, IN_SMS_XML_DIR "/SMS-%016llX.xml", static_cast<unsigned long long>(std::chrono::system_clock::now().time_since_epoch().count()));
-            xml.writeToFile(buf);
+            xml.writeToFile(buf, nullptr, true);
             return 0;
         });
 
@@ -104,7 +104,7 @@ int main(int argc, char* argv[]) {
             auto xml = GenXML(ussd, true);
             char buf[160];
             sprintf(buf, IN_SMS_XML_DIR "/USSD-%016llX.xml", static_cast<unsigned long long>(std::chrono::system_clock::now().time_since_epoch().count()));
-            xml.writeToFile(buf);
+            xml.writeToFile(buf, nullptr, true);
             return 0;
         });
 

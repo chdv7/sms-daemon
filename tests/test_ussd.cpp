@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include "../src/gen-xml.hpp"
 #include "../src/Ussd.h"
 
 namespace chdv::sms_daemon::test {
@@ -25,9 +26,29 @@ TEST(UssdTest, ParsesResponseInsideAtLog) {
     EXPECT_EQ(response.text, "Done");
 }
 
+TEST(UssdTest, DecodesPackedRequest) {
+    EXPECT_EQ(DecodeUssdRequest("\"AA180C3602\",15"), "*100#");
+}
+
 TEST(UssdTest, RejectsNonUssdLine) {
     ReceivedUssd response;
     EXPECT_FALSE(ParseUssdResponse("OK", response));
+}
+
+TEST(UssdTest, XmlContainsRequestAndSendTime) {
+    ReceivedUssd response;
+    response.mode = 0;
+    response.dcs = 72;
+    response.request = "*100#";
+    response.sendTime = 1700000000;
+    response.receiveTime = 1700000005;
+    response.interface = "/dev/ttyUSB2";
+    response.text = "Balance";
+
+    XMLNode xml = GenXML(response, false);
+    EXPECT_STREQ(xml.getAttribute("Request"), "*100#");
+    EXPECT_NE(xml.getAttribute("SendTime"), nullptr);
+    EXPECT_STREQ(xml.getAttribute("Interface"), "/dev/ttyUSB2");
 }
 
 } // namespace chdv::sms_daemon::test

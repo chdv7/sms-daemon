@@ -32,6 +32,8 @@ class CSmsDaemon {
     std::vector<SmsCallBack> m_SmsInCallback;
     std::vector<UssdCallBack> m_UssdInCallback;
     std::string m_ModemInputBuffer;
+    std::string m_LastUssdRequest;
+    time_t m_LastUssdSendTime{};
 
     std::array<bool, maxSmsIndex> m_DirtySimSlots;
     std::string m_DeviceName{DEVICE};
@@ -52,7 +54,7 @@ class CSmsDaemon {
     int ProcessSmsBlock(TSmsBlock& smsBlock);
     void DoProcessOutSmsFolder();
     int SendSmsPart(std::string pdu);
-    int SendUssd(std::string_view ussd);
+    int SendUssd(std::string_view ussd, std::string request = std::string());
     int SendSms(std::string number, std::string text, int flags = 0);
     bool DelSms(int index);
     void DelSmsBlock(vector<TMdmRcvSms> sms);
