@@ -66,6 +66,10 @@ XMLNode GenXML(const ReceivedUssd& ussd, bool debugFlag) {
     xUssd.addAttribute("mode", tmp);
     sprintf(tmp, "%d", ussd.dcs);
     xUssd.addAttribute("dcs", tmp);
+    if(!ussd.request.empty())
+        xUssd.addAttribute("Request", ussd.request.c_str());
+    if(ussd.sendTime)
+        xUssd.addAttribute("SendTime", toLocalTime(ussd.sendTime).c_str());
     xUssd.addAttribute("ReceiveTime", toLocalTime(ussd.receiveTime).c_str());
     xUssd.addAttribute("Interface", ussd.interface.c_str());
     if(debugFlag)

@@ -11,6 +11,7 @@
 #include <unistd.h>
 
 #include <chrono>
+#include <ctime>
 #include <iostream>
 #include <string>
 #include <iostream>
@@ -70,7 +71,7 @@ int CSmsDaemon::Go() {
 
 void CSmsDaemon::Init() {
     m_RecvSMSProcessor.Init(m_CachePath, m_DeviceName);
-    m_RecvSMSProcessor.SetSmsCallBack([this](const ReceivedSMS& sms) { 
+    m_RecvSMSProcessor.SetSmsCallBack([this](const ReceivedSMS& sms) {
         for (auto& cb : m_SmsInCallback)
             cb (sms);
      });
@@ -137,6 +138,8 @@ void CSmsDaemon::ProcessModemInput(const std::string& input) {
     if(!ParseUssdResponse(input, ussd))
         return;
     ussd.interface = m_DeviceName;
+    ussd.request = m_LastUssdRequest;
+    ussd.sendTime = m_LastUssdSendTime;
     for(auto& cb : m_UssdInCallback)
         cb(ussd);
 }
@@ -266,10 +269,14 @@ void CSmsDaemon::DelSmsBlock(vector<TMdmRcvSms> block) {
     }
 }
 
-int CSmsDaemon::SendUssd(std::string_view ussd) {
+int CSmsDaemon::SendUssd(std::string_view ussd, std::string request) {
     std::string cmd("AT+CUSD=1,");
     cmd += ussd;
     cmd += '\r';
+    m_LastUssdRequest = request.empty() ? DecodeUssdRequest(ussd) : std::move(request);
+    if(m_LastUssdRequest.empty())
+        m_LastUssdRequest = std::string(ussd);
+    m_LastUssdSendTime = time(nullptr);
     char log[4096] = "";
     auto err = m_Connector.SendExpect(cmd.c_str(), answers, 5000, log, sizeof(log));
     ProcessModemInput(log);
@@ -333,14 +340,26 @@ void CSmsDaemon::DoProcessOutSmsFolder() {
         FILE* f = fopen(fname.c_str(), "r");
         if(f) {
             char buf[1024] = "";
+            char ussdRequest[1024] = "";
             fgets(buf, sizeof(buf), f);
+            fgets(ussdRequest, sizeof(ussdRequest), f);
             fclose(f);
+            for(char* ptr = buf; *ptr; ++ptr)
+                if(*ptr == '\r' || *ptr == '\n') {
+                    *ptr = '\0';
+                    break;
+                }
+            for(char* ptr = ussdRequest; *ptr; ++ptr)
+                if(*ptr == '\r' || *ptr == '\n') {
+                    *ptr = '\0';
+                    break;
+                }
             int err = 0;
             if (!strlen(buf))
                 err = -100;
             else if (*buf == 'U')
-                err = SendUssd(buf+1);
-            else 
+                err = SendUssd(buf + 1, ussdRequest);
+            else
                 err = SendSmsPart(buf);
             cout << err << " ";
             if(err) {
