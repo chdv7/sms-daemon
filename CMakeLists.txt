@@ -55,8 +55,22 @@ set(SENDER_SOURCES
 add_executable(sms-send ${SENDER_SOURCES})
 target_link_libraries(sms-send PRIVATE sms-core)
 
+include(GNUInstallDirs)
+
+set(SMS_DAEMON_SYSCONFDIR "/etc" CACHE PATH "System configuration directory")
+set(SMS_DAEMON_CONFIG_DIR "${SMS_DAEMON_SYSCONFDIR}/sms-daemon" CACHE PATH "sms-daemon configuration directory")
+set(SMS_DAEMON_CONFIG_FILE "${SMS_DAEMON_CONFIG_DIR}/config.cfg" CACHE FILEPATH "sms-daemon configuration file")
+set(SMS_DAEMON_CONFIG_SRC "${CMAKE_CURRENT_SOURCE_DIR}/sms-daemon.cfg" CACHE FILEPATH "Default sms-daemon configuration source")
+
 install(TARGETS sms-daemon sms-send
-        RUNTIME DESTINATION bin)
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/install_sms_daemon.cmake.in
+    ${CMAKE_CURRENT_BINARY_DIR}/install_sms_daemon.cmake
+    @ONLY
+)
+install(SCRIPT ${CMAKE_CURRENT_BINARY_DIR}/install_sms_daemon.cmake)
 
 # ========================
 #      ТЕСТЫ (gtest)

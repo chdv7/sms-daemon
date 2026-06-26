@@ -1,5 +1,7 @@
 # sms-daemon
-A small SMS and USSD sender/receiver.
+A small SMS and USSD sender/receiver for 2G/3G/4G modem.
+
+Tested with Huawei e1550
 
 Configuration is read from `/etc/sms-daemon/config.cfg` by default. The config file must exist; if a key is missing, the compiled default is used. Use another file with `-c`:
 

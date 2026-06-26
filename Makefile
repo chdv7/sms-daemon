@@ -9,6 +9,19 @@ LDFLAGS   +=
 SRCDIR    = src
 BUILD_DIR = build
 
+# Установка
+PREFIX     ?= /usr/local
+BINDIR     ?= $(PREFIX)/bin
+SYSCONFDIR ?= /etc
+CONFIGDIR  ?= $(SYSCONFDIR)/sms-daemon
+CONFIGFILE ?= $(CONFIGDIR)/config.cfg
+CONFIG_SRC ?= sms-daemon.cfg
+INSTALL    ?= install
+INSTALL_PROGRAM ?= $(INSTALL) -m 0755
+INSTALL_DATA    ?= $(INSTALL) -m 0644
+INSTALL_DIR     ?= $(INSTALL) -d -m 0755
+INSTALL_RUNTIME_DIR ?= $(INSTALL) -d -m 0777
+
 # Основные цели
 DAEMON_EXE = sms-daemon
 SENDER_EXE = sms-send
@@ -68,7 +81,19 @@ clean:
 	-rm -f $(DAEMON_EXE) $(SENDER_EXE)
 	-rm -rf $(BUILD_DIR)
 
-install:
+install: all
+	$(INSTALL_DIR) "$(DESTDIR)$(BINDIR)"
+	$(INSTALL_PROGRAM) "$(DAEMON_EXE)" "$(DESTDIR)$(BINDIR)/$(DAEMON_EXE)"
+	$(INSTALL_PROGRAM) "$(SENDER_EXE)" "$(DESTDIR)$(BINDIR)/$(SENDER_EXE)"
+	$(INSTALL_DIR) "$(DESTDIR)$(CONFIGDIR)"
+	@if [ ! -f "$(DESTDIR)$(CONFIGFILE)" ]; then \
+		$(INSTALL_DATA) "$(CONFIG_SRC)" "$(DESTDIR)$(CONFIGFILE)"; \
+	else \
+		echo "keep existing $(DESTDIR)$(CONFIGFILE)"; \
+	fi
+	$(INSTALL_RUNTIME_DIR) "$(DESTDIR)/tmp/outsms"
+	$(INSTALL_RUNTIME_DIR) "$(DESTDIR)/tmp/sms-daemon"
+	$(INSTALL_RUNTIME_DIR) "$(DESTDIR)/tmp/sms-daemon/ReceivedSMS"
 
 # Включение зависимостей
 -include $(DEPENDS_CPP)
