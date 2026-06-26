@@ -136,6 +136,16 @@ std::string DecodeUssdRequest(std::string_view command) {
 }
 
 bool ParseUssdResponse(const std::string& line, ReceivedUssd& response) {
+    const auto ccfcMarker = line.find("+CCFC:");
+    if(ccfcMarker != std::string::npos) {
+        ReceivedUssd parsed;
+        parsed.raw = line;
+        parsed.mode = 0;
+        parsed.text = line.substr(ccfcMarker);
+        response = std::move(parsed);
+        return true;
+    }
+
     const auto marker = line.find("+CUSD:");
     if(marker == std::string::npos)
         return false;

@@ -30,6 +30,112 @@ namespace chdv::sms_daemon {
 
 static const char* answers[] = {"OK\r", "ERROR\r", NULL};
 static const char* answers_go[] = {">", "OK\r", "ERROR\r", NULL};
+static const char* answers_mmi[] = {"OK\r", "NO CARRIER\r", "ERROR\r", NULL};
+static const char* answers_ccfc[] = {"OK\r", "ERROR\r", NULL};
+
+std::string CleanModemResponse(const char* log) {
+    std::string text = log ? log : "";
+    for(char& ch : text) {
+        if(ch == '\r' || ch == '\n')
+            ch = ' ';
+    }
+    const auto first = text.find_first_not_of(" \t");
+    if(first == std::string::npos)
+        return std::string();
+    const auto last = text.find_last_not_of(" \t");
+    return text.substr(first, last - first + 1);
+}
+
+int CallForwardReason(const std::string& serviceCode) {
+    if(serviceCode == "21")
+        return 0; // unconditional
+    if(serviceCode == "67")
+        return 1; // mobile busy
+    if(serviceCode == "61")
+        return 2; // no reply
+    if(serviceCode == "62")
+        return 3; // not reachable
+    if(serviceCode == "002")
+        return 4; // all forwarding
+    if(serviceCode == "004")
+        return 5; // all conditional forwarding
+    return -1;
+}
+
+std::string BuildCcfcCommand(int reason, int mode) {
+    char command[64];
+    snprintf(command, sizeof(command), "AT+CCFC=%d,%d,,,1\r", reason, mode);
+    return command;
+}
+
+std::string BuildCcfcRegisterCommand(int reason, const std::string& number, const std::string& timeout) {
+    const int type = !number.empty() && number.front() == '+' ? 145 : 129;
+    char command[320];
+    if(timeout.empty())
+        snprintf(command, sizeof(command), "AT+CCFC=%d,3,\"%s\",%d,1\r", reason, number.c_str(), type);
+    else
+        snprintf(command, sizeof(command), "AT+CCFC=%d,3,\"%s\",%d,1,,,%s\r", reason, number.c_str(), type, timeout.c_str());
+    return command;
+}
+
+bool BuildCallForwardCommand(std::string_view mmiCode, std::string& command) {
+    const std::string code(mmiCode);
+    const size_t len = code.size();
+    if(len < 4 || code.back() != '#')
+        return false;
+
+    std::string serviceCode;
+    int mode = -1;
+    if(code.rfind("*#", 0) == 0) {
+        serviceCode = code.substr(2, len - 3);
+        mode = 2;
+    }
+    else if(code.rfind("##", 0) == 0) {
+        serviceCode = code.substr(2, len - 3);
+        mode = 4;
+    }
+    else if(code[0] == '#') {
+        serviceCode = code.substr(1, len - 2);
+        mode = 0;
+    }
+    else if(code.rfind("**", 0) == 0 || code[0] == '*') {
+        const size_t serviceStart = code.rfind("**", 0) == 0 ? 2 : 1;
+        const size_t separator = code.find('*', serviceStart);
+        if(separator == std::string::npos) {
+            serviceCode = code.substr(serviceStart, len - serviceStart - 1);
+            mode = 1;
+        }
+        else {
+            serviceCode = code.substr(serviceStart, separator - serviceStart);
+            const size_t numberStart = separator + 1;
+            size_t numberEnd = code.find('*', numberStart);
+            if(numberEnd == std::string::npos)
+                numberEnd = len - 1;
+            const std::string number = code.substr(numberStart, numberEnd - numberStart);
+            if(number.empty())
+                return false;
+
+            std::string timeout;
+            if(serviceCode == "61" && numberEnd + 2 < len && code.compare(numberEnd, 2, "**") == 0)
+                timeout = code.substr(numberEnd + 2, len - numberEnd - 3);
+
+            const int reason = CallForwardReason(serviceCode);
+            if(reason < 0)
+                return false;
+            command = BuildCcfcRegisterCommand(reason, number, timeout);
+            return true;
+        }
+    }
+    else {
+        return false;
+    }
+
+    const int reason = CallForwardReason(serviceCode);
+    if(reason < 0 || mode < 0)
+        return false;
+    command = BuildCcfcCommand(reason, mode);
+    return true;
+}
 
 static bool const HexDecChars[128] = {
     //      0, 1, 2, 3, 4, 5, 6, 7, 8, 9, A, B, C, D, E, F
@@ -142,15 +248,20 @@ void CSmsDaemon::DoProcessModemInput() {
     }
 }
 
-void CSmsDaemon::ProcessModemInput(const std::string& input) {
-    ReceivedUssd ussd;
-    if(!ParseUssdResponse(input, ussd))
-        return;
+void CSmsDaemon::EmitUssdResponse(ReceivedUssd ussd) {
     ussd.interface = m_DeviceName;
     ussd.request = m_LastUssdRequest;
     ussd.sendTime = m_LastUssdSendTime;
     for(auto& cb : m_UssdInCallback)
         cb(ussd);
+}
+
+bool CSmsDaemon::ProcessModemInput(const std::string& input) {
+    ReceivedUssd ussd;
+    if(!ParseUssdResponse(input, ussd))
+        return false;
+    EmitUssdResponse(std::move(ussd));
+    return true;
 }
 
 void CSmsDaemon::DoProcessInSmsBlock() {
@@ -297,6 +408,68 @@ int CSmsDaemon::SendUssd(std::string_view ussd, std::string request) {
 }
 
 
+int CSmsDaemon::QueryCallForwarding(std::string_view code) {
+    std::string cmd;
+    if(!BuildCallForwardCommand(code, cmd))
+        return -1;
+
+    m_LastUssdRequest = std::string(code);
+    m_LastUssdSendTime = time(nullptr);
+    char log[4096] = "";
+    auto err = m_Connector.SendExpect(cmd.c_str(), answers_ccfc, 15000, log, sizeof(log));
+    if(ProcessModemInput(log))
+        return err;
+
+    ReceivedUssd ussd;
+    ussd.mode = err ? 2 : 0;
+    ussd.raw = log;
+    ussd.text = CleanModemResponse(log);
+    if(ussd.text.empty())
+        ussd.text = err ? "ERROR" : "OK";
+    EmitUssdResponse(std::move(ussd));
+    return err;
+}
+
+int CSmsDaemon::SendMmi(std::string_view code) {
+    const int ccfcErr = QueryCallForwarding(code);
+    if(ccfcErr >= 0)
+        return ccfcErr;
+    std::string cmd("ATD");
+    cmd += code;
+    cmd += ";\r";
+    m_LastUssdRequest = std::string(code);
+    m_LastUssdSendTime = time(nullptr);
+    char log[4096] = "";
+    auto err = m_Connector.SendExpect(cmd.c_str(), answers_mmi, 15000, log, sizeof(log));
+    const bool hasUssdResponse = ProcessModemInput(log);
+    const int modemResponse = err;
+    if(err == 1)
+        err = 0;
+    if(!hasUssdResponse) {
+        ReceivedUssd ussd;
+        ussd.mode = err ? 2 : 0;
+        ussd.raw = log;
+        ussd.text = CleanModemResponse(log);
+        if(ussd.text.empty()) {
+            if(modemResponse == 0)
+                ussd.text = "OK";
+            else if(modemResponse == 1)
+                ussd.text = "NO CARRIER";
+            else if(modemResponse == 2)
+                ussd.text = "ERROR";
+            else
+                ussd.text = "No modem response";
+        }
+        EmitUssdResponse(std::move(ussd));
+    }
+    if(err) {
+        m_Connector.Puts("\r\r", 10);
+        std::cout << "Error in : " << cmd << " code:" << err << std::endl;
+    }
+    return err;
+}
+
+
 int CSmsDaemon::SendSmsPart(std::string pdu) {
     int err = 0;
     if(pdu.size() > 4) {
@@ -368,6 +541,8 @@ void CSmsDaemon::DoProcessOutSmsFolder() {
                 err = -100;
             else if (*buf == 'U')
                 err = SendUssd(buf + 1, ussdRequest);
+            else if (*buf == 'M')
+                err = SendMmi(buf + 1);
             else
                 err = SendSmsPart(buf);
             cout << err << " ";

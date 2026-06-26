@@ -33,6 +33,13 @@ TEST(UssdTest, DecodesPackedRequest) {
     EXPECT_EQ(DecodeUssdRequest("\"AA180C3602\",15"), "*100#");
 }
 
+TEST(UssdTest, ParsesCallForwardingResponse) {
+    ReceivedUssd response;
+    ASSERT_TRUE(ParseUssdResponse("\r\n+CCFC: 0,1\r\nOK\r\n", response));
+    EXPECT_EQ(response.mode, 0);
+    EXPECT_NE(response.text.find("+CCFC: 0,1"), std::string::npos);
+}
+
 TEST(UssdTest, RejectsNonUssdLine) {
     ReceivedUssd response;
     EXPECT_FALSE(ParseUssdResponse("OK", response));

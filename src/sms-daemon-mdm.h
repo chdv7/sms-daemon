@@ -51,7 +51,8 @@ class CSmsDaemon {
     int Do();
     void DoProcessInSmsBlock();
     void DoProcessModemInput();
-    void ProcessModemInput(const std::string& input);
+    bool ProcessModemInput(const std::string& input);
+    void EmitUssdResponse(ReceivedUssd ussd);
     TSmsBlock GetSmsBlockFromModem();
     TSmsBlock GetSmsBlockByCMGR();
     TSmsBlock GetSmsBlockByCMGL();
@@ -59,6 +60,8 @@ class CSmsDaemon {
     void DoProcessOutSmsFolder();
     int SendSmsPart(std::string pdu);
     int SendUssd(std::string_view ussd, std::string request = std::string());
+    int SendMmi(std::string_view code);
+    int QueryCallForwarding(std::string_view code);
     int SendSms(std::string number, std::string text, int flags = 0);
     bool DelSms(int index);
     void DelSmsBlock(vector<TMdmRcvSms> sms);

@@ -64,6 +64,52 @@ int GenSMS(const char* phoneNo, const char* dir) {
     return 0;
 }
 
+bool IsCallForwardServiceCode(const std::string& code) {
+    return code == "21" || code == "67" || code == "61" || code == "62" || code == "002" || code == "004";
+}
+
+bool IsMmiCode(const char* value) {
+    const std::string code(value ? value : "");
+    const size_t len = code.size();
+    if(len < 4 || code.back() != '#')
+        return false;
+
+    std::string serviceCode;
+    if(code.rfind("*#", 0) == 0 || code.rfind("##", 0) == 0) {
+        serviceCode = code.substr(2, len - 3);
+    }
+    else if(code[0] == '#') {
+        serviceCode = code.substr(1, len - 2);
+    }
+    else if(code.rfind("**", 0) == 0) {
+        const size_t separator = code.find('*', 2);
+        if(separator == std::string::npos)
+            return false;
+        serviceCode = code.substr(2, separator - 2);
+    }
+    else if(code[0] == '*') {
+        const size_t separator = code.find('*', 1);
+        if(separator == std::string::npos)
+            serviceCode = code.substr(1, len - 2);
+        else
+            serviceCode = code.substr(1, separator - 1);
+    }
+    else {
+        return false;
+    }
+
+    return IsCallForwardServiceCode(serviceCode);
+}
+
+int GenMmi(const char* code, const char* dir) {
+    std::string out = std::string("M") + code;
+    int err = SaveSMS(out.c_str(), dir);
+    if(err < 0)
+         printf("Saving error %d\n", err);
+
+    return err;
+}
+
 int GenUSSD(const char* ussd, const char* dir) {
  
     COutPduSms sms_processor("", ussd);
@@ -122,6 +168,8 @@ int main(int argc, char* argv[]) {
     if(!out_dir)
         out_dir = config.jobDir.c_str();
 
+    if (IsMmiCode(phone_No))
+        return GenMmi(phone_No, out_dir);
     if (*phone_No == '*' || *phone_No == '#')
         return GenUSSD(phone_No, out_dir);
     else
