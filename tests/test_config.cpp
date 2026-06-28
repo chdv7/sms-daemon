@@ -14,6 +14,8 @@ TEST(ConfigTest, LoadsConfiguredPathsAndKeepsDefaults) {
                         << "sms_dir=/tmp/sms-in\n"
                         << "ussd_dir=/tmp/ussd-in\n"
                         << "log_file=/tmp/sms-daemon-test.log\n"
+                        << "sms_hook=/usr/local/bin/sms-hook-a\n"
+                        << "sms_hook=/usr/local/bin/sms-hook-b\n"
                         << "debug=true\n";
 
     SmsDaemonConfig config;
@@ -24,6 +26,9 @@ TEST(ConfigTest, LoadsConfiguredPathsAndKeepsDefaults) {
     EXPECT_EQ(config.smsDir, "/tmp/sms-in");
     EXPECT_EQ(config.ussdDir, "/tmp/ussd-in");
     EXPECT_EQ(config.logFile, "/tmp/sms-daemon-test.log");
+    ASSERT_EQ(config.smsHooks.size(), 2u);
+    EXPECT_EQ(config.smsHooks[0], "/usr/local/bin/sms-hook-a");
+    EXPECT_EQ(config.smsHooks[1], "/usr/local/bin/sms-hook-b");
     EXPECT_TRUE(config.debug);
 }
 
@@ -36,6 +41,7 @@ TEST(ConfigTest, MissingOptionalConfigKeepsDefaults) {
     EXPECT_EQ(config.smsDir, IN_SMS_XML_DIR);
     EXPECT_EQ(config.ussdDir, IN_SMS_XML_DIR);
     EXPECT_EQ(config.logFile, SMS_LOG_FILE);
+    EXPECT_TRUE(config.smsHooks.empty());
     EXPECT_FALSE(config.debug);
 }
 
@@ -57,6 +63,16 @@ TEST(ConfigTest, RejectsInvalidDebugValue) {
     std::string error;
     EXPECT_FALSE(LoadSmsDaemonConfig(path, config, error));
     EXPECT_NE(error.find("invalid boolean value for debug"), std::string::npos);
+}
+
+TEST(ConfigTest, RejectsEmptySmsHook) {
+    const std::string path = "/tmp/sms-daemon-empty-hook-config.conf";
+    std::ofstream(path) << "sms_hook=\n";
+
+    SmsDaemonConfig config;
+    std::string error;
+    EXPECT_FALSE(LoadSmsDaemonConfig(path, config, error));
+    EXPECT_NE(error.find("sms_hook must not be empty"), std::string::npos);
 }
 
 } // namespace chdv::sms_daemon::test

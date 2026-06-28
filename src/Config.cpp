@@ -72,6 +72,8 @@ bool LoadSmsDaemonConfig(const std::string& path, SmsDaemonConfig& config, std::
             config.ussdDir = value;
         else if(key == "log_file")
             config.logFile = value;
+        else if(key == "sms_hook")
+            config.smsHooks.push_back(value);
         else if(key == "debug") {
             if(!ParseBool(value, config.debug)) {
                 error = path + ":" + std::to_string(lineNumber) + ": invalid boolean value for debug: " + value;
@@ -103,6 +105,12 @@ bool LoadSmsDaemonConfig(const std::string& path, SmsDaemonConfig& config, std::
     if(config.logFile.empty()) {
         error = path + ": log_file must not be empty";
         return false;
+    }
+    for(const auto& smsHook : config.smsHooks) {
+        if(smsHook.empty()) {
+            error = path + ": sms_hook must not be empty";
+            return false;
+        }
     }
     return true;
 }

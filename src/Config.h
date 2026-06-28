@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 #include <iostream>
 #include "sms-daemon-config.h"
 
@@ -12,6 +13,7 @@ struct SmsDaemonConfig {
     std::string smsDir{IN_SMS_XML_DIR};
     std::string ussdDir{IN_SMS_XML_DIR};
     std::string logFile{SMS_LOG_FILE};
+    std::vector<std::string> smsHooks{};
     bool debug{false};
 };
 
@@ -22,6 +24,7 @@ inline std::ostream& operator << (std::ostream&os, const SmsDaemonConfig& config
           "smsDir: " << config.smsDir << std::endl <<
           "ussdDir: " << config.ussdDir << std::endl <<
           "logFile: " << config.logFile << std::endl <<
+          "smsHooks: " << config.smsHooks.size() << std::endl <<
           "debug: " << (config.debug ? "true" : "false") << std::endl;
     return os;
 }

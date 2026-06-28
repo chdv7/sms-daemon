@@ -176,6 +176,7 @@ void CSmsDaemon::Setup(const std::string& configPath, bool configRequired) {
     m_SmsInDir = config.smsDir;
     m_UssdInDir = config.ussdDir;
     m_LogFile = config.logFile;
+    m_SmsHooks = config.smsHooks;
     m_Debug = config.debug;
     SetLogPath(m_LogFile);
 }

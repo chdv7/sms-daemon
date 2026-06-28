@@ -11,6 +11,7 @@
 #include <iostream>
 #include "gen-xml.hpp"
 #include "sms-daemon-mdm.h"
+#include "SmsHookRunner.h"
 #include "ut.h"
 
 namespace {
@@ -116,6 +117,9 @@ int main(int argc, char* argv[]) {
             sprintf(buf, "%s/SMS-%016llX.xml", daemon.SmsInDir().c_str(), static_cast<unsigned long long>(std::chrono::system_clock::now().time_since_epoch().count()));
             xml.writeToFile(buf, nullptr, true);
             return 0;
+        });
+        daemon.RegisterInSmsCallBack([&daemon](const chdv::sms_daemon::ReceivedSMS& sms) {
+            return chdv::sms_daemon::RunSmsHooks(daemon.SmsHooks(), sms);
         });
 
         daemon.RegisterInUssdCallBack([&daemon](const chdv::sms_daemon::ReceivedUssd& ussd) {
