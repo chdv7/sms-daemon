@@ -27,6 +27,7 @@
 using namespace std;
 namespace chdv::sms_daemon {
 //#define __DO_NOT_DEL_SMS__
+//#define SMS_DAEMON_DEBUG_SMS_POLLING
 
 static const char* answers[] = {"OK\r", "ERROR\r", NULL};
 static const char* answers_go[] = {">", "OK\r", "ERROR\r", NULL};
@@ -315,7 +316,9 @@ CSmsDaemon::TSmsBlock CSmsDaemon::GetSmsBlockByCMGL() {
     char log[50 * 1024];
     rtn.err = m_Connector.SendExpect("AT+CMGL=4\r", answers, 3000, log, sizeof log);
     ProcessModemInput(log);
+#ifdef SMS_DAEMON_DEBUG_SMS_POLLING
     cout << "AT+CMGL=4: " << log << endl << endl;
+#endif
     if(rtn.err) {
         fprintf(stderr, "+CMGL Error %d\n", rtn.err);
         if(rtn.err > 0)
