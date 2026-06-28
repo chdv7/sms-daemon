@@ -22,6 +22,13 @@ TEST(UssdTest, DecodesUcs2Response) {
     EXPECT_EQ(response.text, u8"Баланс");
 }
 
+TEST(UssdTest, DecodesGsm7HexResponseWithDcs1) {
+    ReceivedUssd response;
+    ASSERT_TRUE(ParseUssdResponse("+CUSD: 0,\"D3B2DC9E1E9741EE371D14B687D3ECB0985D7601\",1", response));
+    EXPECT_EQ(response.dcs, 1);
+    EXPECT_EQ(response.text, "Service not available.");
+}
+
 TEST(UssdTest, ParsesResponseInsideAtLog) {
     ReceivedUssd response;
     ASSERT_TRUE(ParseUssdResponse("\r\n+CUSD: 2,\"Done\",15\r\nOK\r\n", response));

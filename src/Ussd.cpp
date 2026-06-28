@@ -36,6 +36,15 @@ bool IsHexString(const std::string& value) {
     return true;
 }
 
+bool IsHexOctetString(const std::string& value) {
+    if(value.empty() || value.size() % 2 != 0)
+        return false;
+    for(char ch : value)
+        if(!std::isxdigit(static_cast<unsigned char>(ch)))
+            return false;
+    return true;
+}
+
 std::string DecodeUcs2(const std::string& value) {
     std::wstring decoded;
     decoded.reserve(value.size() / 4);
@@ -180,6 +189,9 @@ bool ParseUssdResponse(const std::string& line, ReceivedUssd& response) {
         }
     }
 
+    // 0x01 and 0x0F are commonly used for GSM 7-bit USSD payloads.
+    if((parsed.dcs == 1 || parsed.dcs == 15) && IsHexOctetString(parsed.text))
+        parsed.text = DecodeGsm7Packed(parsed.text);
     // 0x48 (72) is the commonly used UCS2 data coding scheme for USSD.
     if(parsed.dcs == 72 && IsHexString(parsed.text))
         parsed.text = DecodeUcs2(parsed.text);
