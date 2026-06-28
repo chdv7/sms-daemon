@@ -42,6 +42,7 @@ add_library(sms-core STATIC ${SMS_CORE_SOURCES})
 set(DAEMON_SOURCES
     ${SRC_DIR}/sms-daemon.cpp
     ${SRC_DIR}/sms-daemon-mdm.cpp
+    ${SRC_DIR}/SmsHookRunner.cpp
 )
 
 add_executable(sms-daemon ${DAEMON_SOURCES})
