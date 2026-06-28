@@ -27,6 +27,21 @@ Arguments are passed without shell expansion:
     argv[4] daemon receive timestamp
     argv[5] SMS center number
 
+
+Install and run as a Linux daemon with systemd:
+
+    cmake -S . -B build -DBUILD_TESTING=ON
+    cmake --build build
+    sudo cmake --install build
+    sudo systemctl daemon-reload
+    sudo systemctl enable --now sms-daemon.service
+
+The service runs `sms-daemon` in foreground mode and reads `/etc/sms-daemon/config.cfg`.
+Check status and logs with:
+
+    systemctl status sms-daemon.service
+    journalctl -u sms-daemon.service -f
+
 Send an SMS body from stdin:
 
     sms-send +70123456789 [./outsms] < message.txt

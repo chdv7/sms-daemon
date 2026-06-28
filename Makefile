@@ -21,6 +21,9 @@ INSTALL_PROGRAM ?= $(INSTALL) -m 0755
 INSTALL_DATA    ?= $(INSTALL) -m 0644
 INSTALL_DIR     ?= $(INSTALL) -d -m 0755
 INSTALL_RUNTIME_DIR ?= $(INSTALL) -d -m 0777
+SYSTEMDUNITDIR ?= /etc/systemd/system
+SERVICE_TEMPLATE ?= systemd/sms-daemon.service.in
+SERVICE_FILE ?= sms-daemon.service
 
 # Основные цели
 DAEMON_EXE = sms-daemon
@@ -30,6 +33,7 @@ SENDER_EXE = sms-send
 DAEMON_SOURCES_CPP = \
     sms-daemon.cpp \
     sms-daemon-mdm.cpp \
+    SmsHookRunner.cpp \
     PduSMS.cpp \
     serial.cpp \
     rsserial.cpp \
@@ -94,6 +98,11 @@ install: all
 	$(INSTALL_RUNTIME_DIR) "$(DESTDIR)/tmp/outsms"
 	$(INSTALL_RUNTIME_DIR) "$(DESTDIR)/tmp/sms-daemon"
 	$(INSTALL_RUNTIME_DIR) "$(DESTDIR)/tmp/sms-daemon/ReceivedSMS"
+	$(INSTALL_DIR) "$(DESTDIR)$(SYSTEMDUNITDIR)"
+	@sed -e 's|@BINDIR@|$(BINDIR)|g' \
+	     -e 's|@CONFIGFILE@|$(CONFIGFILE)|g' \
+	     "$(SERVICE_TEMPLATE)" > "$(BUILD_DIR)/$(SERVICE_FILE)"
+	$(INSTALL_DATA) "$(BUILD_DIR)/$(SERVICE_FILE)" "$(DESTDIR)$(SYSTEMDUNITDIR)/$(SERVICE_FILE)"
 
 # Включение зависимостей
 -include $(DEPENDS_CPP)

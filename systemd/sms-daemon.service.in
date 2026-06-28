@@ -1,0 +1,12 @@
+[Unit]
+Description=SMS/USSD modem daemon
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=@BINDIR@/sms-daemon -c @CONFIGFILE@
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target
