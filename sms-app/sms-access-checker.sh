@@ -10,7 +10,13 @@ user_access["+19993333333"]=3  # Admin
 #################################################
 #################################################
 
+request="$1"
 incoming_number="$2"
+
+if ! [[ "$incoming_number" =~ ^\+[0-9]+$ ]]; then
+    echo "Phone is not a regilar number"
+    exit 1
+fi
 
 
 if [[ -z "${user_access[$incoming_number]}" ]]; then
@@ -24,22 +30,22 @@ level=${user_access[$incoming_number]}
 # 3. Маршрутизируем логику скрипта в зависимости от уровня
 case $level in
     0)
-        echo -n "Access is temprary blocked" | sms-send "$incoming_number"
+        echo -n "Access is temprary blocked" "$request" | sms-send "$incoming_number"
         # Вызов функций для пользователя
         ;;
     1)
-        echo -n "User" | sms-send "$incoming_number"
+        echo -n "User" "$request" | sms-send "$incoming_number"
         # Вызов функций для пользователя
         ;;
     2)
-        echo -n "Supervisor" | sms-send "$incoming_number"
+        echo -n "Supervisor" "$request" | sms-send "$incoming_number"
         # Вызов функций для модератора
         ;;
     3)
-        echo -n "Admin" | sms-send "$incoming_number"
+        echo -n "Admin" "$request" | sms-send "$incoming_number"
         # Полный доступ
         ;;
     *)
-        echo -n "Unknown access level ($level)." | sms-send "$incoming_number"
+        echo -n "Unknown access level ($level)." "$request" | sms-send "$incoming_number"
         ;;
 esac
