@@ -174,8 +174,12 @@ void CSmsDaemon::Setup(const std::string& configPath, bool configRequired) {
     std::cout << config << std::endl;
     m_DeviceName = config.device;
     m_OutSmsMailDir = config.jobDir;
-    m_SmsInDir = config.smsDir;
-    m_UssdInDir = config.ussdDir;
+    m_SmsXmlEnabled = config.smsDirConfigured;
+    m_UssdXmlEnabled = config.ussdDirConfigured;
+    if(m_SmsXmlEnabled)
+        m_SmsInDir = config.smsDir;
+    if(m_UssdXmlEnabled)
+        m_UssdInDir = config.ussdDir;
     m_LogFile = config.logFile;
     m_SmsHooks = config.smsHooks;
     m_Debug = config.debug;

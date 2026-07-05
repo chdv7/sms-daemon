@@ -5,7 +5,10 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <chrono>
+#include <cctype>
 #include <filesystem>
+#include <iomanip>
+#include <sstream>
 #include <string>
 
 #include <iostream>
@@ -21,6 +24,36 @@ std::string g_LogFile = SMS_LOG_FILE;
 void CreateDir(const std::string& path) {
     std::filesystem::create_directories(path);
     chmod(path.c_str(), 0777);
+}
+
+std::string SanitizeFileNamePart(const std::string& value) {
+    std::string result;
+    result.reserve(value.size());
+    for(unsigned char ch : value) {
+        if(std::isalnum(ch) || ch == '+' || ch == '-' || ch == '_' || ch == '.')
+            result += static_cast<char>(ch);
+        else
+            result += '_';
+    }
+    return result;
+}
+
+std::string MakeUniqueOutputXmlPath(const std::string& dir, time_t when, const std::string& service, const std::string& sender) {
+    std::tm tm{};
+    localtime_r(&when, &tm);
+
+    std::ostringstream base;
+    base << std::put_time(&tm, "%Y%m%d-%H%M%S")
+         << '-' << SanitizeFileNamePart(service);
+
+    const auto safeSender = SanitizeFileNamePart(sender);
+    if(!safeSender.empty())
+        base << '-' << safeSender;
+
+    std::filesystem::path path = std::filesystem::path(dir) / (base.str() + ".xml");
+    for(int i = 1; std::filesystem::exists(path); ++i)
+        path = std::filesystem::path(dir) / (base.str() + "-" + std::to_string(i) + ".xml");
+    return path.string();
 }
 } // namespace
 
@@ -107,30 +140,38 @@ int main(int argc, char* argv[]) {
         chdv::sms_daemon::CSmsDaemon daemon;
         daemon.Setup(configPath, configRequired);
         CreateDir(daemon.JobDir());
-        CreateDir(daemon.SmsInDir());
-        CreateDir(daemon.UssdInDir());
+        if(daemon.SmsXmlEnabled())
+            CreateDir(daemon.SmsInDir());
+        else
+            std::cout << "Incoming SMS XML output disabled" << std::endl;
+        if(daemon.UssdXmlEnabled())
+            CreateDir(daemon.UssdInDir());
+        else
+            std::cout << "USSD XML output disabled" << std::endl;
         daemon.RegisterInSmsCallBack ([](const chdv::sms_daemon::ReceivedSMS& sms){
             std::cout << "SMS From:" << toUTF8(sms.m_From) << " Parts:" << sms.m_nParts << " Text:" << toUTF8(sms.m_sText) << std::endl;
             return 0;
         });
-        daemon.RegisterInSmsCallBack ([&daemon](const chdv::sms_daemon::ReceivedSMS& sms){
-            auto xml = GenXML(sms, daemon.Debug(), daemon.Debug());
-            char buf[512];
-            sprintf(buf, "%s/SMS-%016llX.xml", daemon.SmsInDir().c_str(), static_cast<unsigned long long>(std::chrono::system_clock::now().time_since_epoch().count()));
-            xml.writeToFile(buf, nullptr, true);
-            return 0;
-        });
+        if(daemon.SmsXmlEnabled()) {
+            daemon.RegisterInSmsCallBack ([&daemon](const chdv::sms_daemon::ReceivedSMS& sms){
+                auto xml = GenXML(sms, daemon.Debug(), daemon.Debug());
+                const auto path = MakeUniqueOutputXmlPath(daemon.SmsInDir(), sms.m_RecvTime, "SMS", toUTF8(sms.m_From));
+                xml.writeToFile(path.c_str(), nullptr, true);
+                return 0;
+            });
+        }
         daemon.RegisterInSmsCallBack([&daemon](const chdv::sms_daemon::ReceivedSMS& sms) {
             return chdv::sms_daemon::RunSmsHooks(daemon.SmsHooks(), sms);
         });
 
-        daemon.RegisterInUssdCallBack([&daemon](const chdv::sms_daemon::ReceivedUssd& ussd) {
-            auto xml = GenXML(ussd, daemon.Debug());
-            char buf[512];
-            sprintf(buf, "%s/USSD-%016llX.xml", daemon.UssdInDir().c_str(), static_cast<unsigned long long>(std::chrono::system_clock::now().time_since_epoch().count()));
-            xml.writeToFile(buf, nullptr, true);
-            return 0;
-        });
+        if(daemon.UssdXmlEnabled()) {
+            daemon.RegisterInUssdCallBack([&daemon](const chdv::sms_daemon::ReceivedUssd& ussd) {
+                auto xml = GenXML(ussd, daemon.Debug());
+                const auto path = MakeUniqueOutputXmlPath(daemon.UssdInDir(), ussd.receiveTime, "USSD", "");
+                xml.writeToFile(path.c_str(), nullptr, true);
+                return 0;
+            });
+        }
 
         // daemon.RegisterInSmsCallBack([](const std::string number, const
         // std::string text, std::string& replay, void* userdata) { replay = "OK
