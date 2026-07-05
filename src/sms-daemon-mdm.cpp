@@ -243,15 +243,36 @@ void CSmsDaemon::DoProcessModemInput() {
             break;
         m_ModemInputBuffer += static_cast<char>(chr);
     }
+    ProcessBufferedModemLines();
+}
 
+bool CSmsDaemon::ProcessBufferedModemLines() {
+    bool found = false;
     size_t end = 0;
     while((end = m_ModemInputBuffer.find('\n')) != std::string::npos) {
         std::string line = m_ModemInputBuffer.substr(0, end);
         m_ModemInputBuffer.erase(0, end + 1);
         if(!line.empty() && line.back() == '\r')
             line.pop_back();
-        ProcessModemInput(line);
+        found = ProcessModemInput(line) || found;
     }
+    return found;
+}
+
+bool CSmsDaemon::WaitForUssdResponse(int timeoutMs) {
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
+    while(std::chrono::steady_clock::now() < deadline) {
+        int chr = m_Connector.ReceiveChar();
+        if(chr >= 0) {
+            m_ModemInputBuffer += static_cast<char>(chr);
+            if(ProcessBufferedModemLines())
+                return true;
+        }
+        else {
+            Sleep(50);
+        }
+    }
+    return false;
 }
 
 void CSmsDaemon::EmitUssdResponse(ReceivedUssd ussd) {
@@ -266,6 +287,8 @@ bool CSmsDaemon::ProcessModemInput(const std::string& input) {
     ReceivedUssd ussd;
     if(!ParseUssdResponse(input, ussd))
         return false;
+    if(m_Debug)
+        std::cout << "USSD modem line: " << input << std::endl;
     EmitUssdResponse(std::move(ussd));
     return true;
 }
@@ -407,7 +430,12 @@ int CSmsDaemon::SendUssd(std::string_view ussd, std::string request) {
     m_LastUssdSendTime = time(nullptr);
     char log[4096] = "";
     auto err = m_Connector.SendExpect(cmd.c_str(), answers, 5000, log, sizeof(log));
-    ProcessModemInput(log);
+    const bool hasUssdResponse = ProcessModemInput(log);
+    if(!err && !hasUssdResponse) {
+        std::cout << "Waiting USSD response" << std::endl;
+        if(!WaitForUssdResponse(60000))
+            std::cout << "USSD response timeout" << std::endl;
+    }
     if (err){
         m_Connector.Puts("\r\r", 10);
         std::cout << "Error in : " << cmd << " code:" << err << std::endl;

@@ -80,6 +80,20 @@ void LogError(int code, const char* text) {
     }
 }
 
+bool WriteXmlFile(const XMLNode& xml, const std::string& path, const char* service) {
+    const auto err = xml.writeToFile(path.c_str(), nullptr, true);
+    if(err == eXMLErrorNone) {
+        std::cout << service << " XML saved: " << path << std::endl;
+        return true;
+    }
+
+    std::ostringstream message;
+    message << service << " XML write failed: " << path << ": " << XMLNode::getError(err);
+    LogError(-1, message.str().c_str());
+    std::cerr << message.str() << std::endl;
+    return false;
+}
+
 int main(int argc, char* argv[]) {
     std::cout << "sms-daemon version " << SMS_DAEMON_VERSION << std::endl;
 
@@ -156,7 +170,7 @@ int main(int argc, char* argv[]) {
             daemon.RegisterInSmsCallBack ([&daemon](const chdv::sms_daemon::ReceivedSMS& sms){
                 auto xml = GenXML(sms, daemon.Debug(), daemon.Debug());
                 const auto path = MakeUniqueOutputXmlPath(daemon.SmsInDir(), sms.m_RecvTime, "SMS", toUTF8(sms.m_From));
-                xml.writeToFile(path.c_str(), nullptr, true);
+                WriteXmlFile(xml, path, "SMS");
                 return 0;
             });
         }
@@ -166,9 +180,10 @@ int main(int argc, char* argv[]) {
 
         if(daemon.UssdXmlEnabled()) {
             daemon.RegisterInUssdCallBack([&daemon](const chdv::sms_daemon::ReceivedUssd& ussd) {
+                std::cout << "USSD response received: " << ussd.text << std::endl;
                 auto xml = GenXML(ussd, daemon.Debug());
                 const auto path = MakeUniqueOutputXmlPath(daemon.UssdInDir(), ussd.receiveTime, "USSD", "");
-                xml.writeToFile(path.c_str(), nullptr, true);
+                WriteXmlFile(xml, path, "USSD");
                 return 0;
             });
         }

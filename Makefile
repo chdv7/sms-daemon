@@ -97,8 +97,8 @@ install: all
 	else \
 		echo "keep existing $(DESTDIR)$(CONFIGFILE)"; \
 	fi
-	$(INSTALL_RUNTIME_DIR) "$(DESTDIR)/tmp/outsms"
 	$(INSTALL_RUNTIME_DIR) "$(DESTDIR)/tmp/sms-daemon"
+	$(INSTALL_RUNTIME_DIR) "$(DESTDIR)/tmp/sms-daemon/outsms"
 	$(INSTALL_RUNTIME_DIR) "$(DESTDIR)/tmp/sms-daemon/ReceivedSMS"
 	$(INSTALL_DIR) "$(DESTDIR)$(SYSTEMDUNITDIR)"
 	@sed -e 's|@BINDIR@|$(BINDIR)|g' \

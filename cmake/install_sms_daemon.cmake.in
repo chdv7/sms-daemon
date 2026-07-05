@@ -5,6 +5,6 @@ else()
     message(STATUS "keep existing $ENV{DESTDIR}@SMS_DAEMON_CONFIG_FILE@")
 endif()
 
-file(MAKE_DIRECTORY "$ENV{DESTDIR}/tmp/outsms")
 file(MAKE_DIRECTORY "$ENV{DESTDIR}/tmp/sms-daemon")
+file(MAKE_DIRECTORY "$ENV{DESTDIR}/tmp/sms-daemon/outsms")
 file(MAKE_DIRECTORY "$ENV{DESTDIR}/tmp/sms-daemon/ReceivedSMS")

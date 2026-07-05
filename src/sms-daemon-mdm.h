@@ -54,7 +54,9 @@ class CSmsDaemon {
     int Do();
     void DoProcessInSmsBlock();
     void DoProcessModemInput();
+    bool ProcessBufferedModemLines();
     bool ProcessModemInput(const std::string& input);
+    bool WaitForUssdResponse(int timeoutMs);
     void EmitUssdResponse(ReceivedUssd ussd);
     TSmsBlock GetSmsBlockFromModem();
     TSmsBlock GetSmsBlockByCMGR();
