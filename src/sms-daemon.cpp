@@ -13,6 +13,7 @@
 #include "sms-daemon-mdm.h"
 #include "SmsHookRunner.h"
 #include "ut.h"
+#include "version.h"
 
 namespace {
 std::string g_LogFile = SMS_LOG_FILE;
@@ -47,6 +48,8 @@ void LogError(int code, const char* text) {
 }
 
 int main(int argc, char* argv[]) {
+    std::cout << "sms-daemon version " << SMS_DAEMON_VERSION << std::endl;
+
     mkdir(SMS_TMP_DIR, 0777);
     chmod(SMS_TMP_DIR, 0777);
 
@@ -56,7 +59,6 @@ int main(int argc, char* argv[]) {
     for(int i = 1; i < argc; ++i) {
         if(!strcmp(argv[i], "--daemon")) {
             isdaemon = 1;
-            printf("sms-daemon\n");
         }
         else if(!strcmp(argv[i], "--config") || !strcmp(argv[i], "-c")) {
             if(++i >= argc) {

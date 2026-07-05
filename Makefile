@@ -4,6 +4,8 @@ CC        = gcc
 CFLAGS    += -Wall -g
 CPPFLAGS  += -Wall -std=c++17 -g -MMD -MP
 LDFLAGS   +=
+VERSION   ?= 1.0.0
+CPPFLAGS  += -DSMS_DAEMON_VERSION=\"$(VERSION)\"
 
 # Папки
 SRCDIR    = src

@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.10)
 
-project(sms_project LANGUAGES C CXX)
+project(sms_project VERSION 1.0.0 LANGUAGES C CXX)
+
+set(SMS_DAEMON_VERSION "${PROJECT_VERSION}" CACHE STRING "sms-daemon version")
 
 # C++17
 set(CMAKE_CXX_STANDARD 17)
@@ -47,6 +49,7 @@ set(DAEMON_SOURCES
 
 add_executable(sms-daemon ${DAEMON_SOURCES})
 target_link_libraries(sms-daemon PRIVATE sms-core)
+target_compile_definitions(sms-daemon PRIVATE SMS_DAEMON_VERSION="${SMS_DAEMON_VERSION}")
 
 # ---- Отправщик ----
 set(SENDER_SOURCES
