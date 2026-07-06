@@ -25,6 +25,8 @@ TEST(ConfigTest, LoadsConfiguredPathsAndKeepsDefaults) {
     EXPECT_EQ(config.jobDir, "/tmp/jobs");
     EXPECT_EQ(config.smsDir, "/tmp/sms-in");
     EXPECT_EQ(config.ussdDir, "/tmp/ussd-in");
+    EXPECT_TRUE(config.smsDirConfigured);
+    EXPECT_TRUE(config.ussdDirConfigured);
     EXPECT_EQ(config.logFile, "/tmp/sms-daemon-test.log");
     ASSERT_EQ(config.smsHooks.size(), 2u);
     EXPECT_EQ(config.smsHooks[0], "/usr/local/bin/sms-hook-a");
@@ -38,11 +40,44 @@ TEST(ConfigTest, MissingOptionalConfigKeepsDefaults) {
     ASSERT_TRUE(LoadSmsDaemonConfig("/tmp/sms-daemon-missing-config.conf", config, error, false)) << error;
     EXPECT_EQ(config.device, DEVICE);
     EXPECT_EQ(config.jobDir, OUT_SMS_DIR);
-    EXPECT_EQ(config.smsDir, IN_SMS_XML_DIR);
-    EXPECT_EQ(config.ussdDir, IN_SMS_XML_DIR);
+    EXPECT_FALSE(config.smsDirConfigured);
+    EXPECT_FALSE(config.ussdDirConfigured);
     EXPECT_EQ(config.logFile, SMS_LOG_FILE);
     EXPECT_TRUE(config.smsHooks.empty());
     EXPECT_FALSE(config.debug);
+}
+
+TEST(ConfigTest, MissingSmsAndUssdDirsDisableXmlOutput) {
+    const std::string path = "/tmp/sms-daemon-no-xml-config.conf";
+    std::ofstream(path) << "device=/dev/ttyUSB2\n"
+                        << "job_dir=/tmp/jobs\n"
+                        << "log_file=/tmp/sms-daemon-test.log\n";
+
+    SmsDaemonConfig config;
+    std::string error;
+    ASSERT_TRUE(LoadSmsDaemonConfig(path, config, error)) << error;
+    EXPECT_FALSE(config.smsDirConfigured);
+    EXPECT_FALSE(config.ussdDirConfigured);
+}
+
+TEST(ConfigTest, RejectsEmptyConfiguredSmsDir) {
+    const std::string path = "/tmp/sms-daemon-empty-sms-dir-config.conf";
+    std::ofstream(path) << "sms_dir=\n";
+
+    SmsDaemonConfig config;
+    std::string error;
+    EXPECT_FALSE(LoadSmsDaemonConfig(path, config, error));
+    EXPECT_NE(error.find("sms_dir must not be empty"), std::string::npos);
+}
+
+TEST(ConfigTest, RejectsEmptyConfiguredUssdDir) {
+    const std::string path = "/tmp/sms-daemon-empty-ussd-dir-config.conf";
+    std::ofstream(path) << "ussd_dir=\n";
+
+    SmsDaemonConfig config;
+    std::string error;
+    EXPECT_FALSE(LoadSmsDaemonConfig(path, config, error));
+    EXPECT_NE(error.find("ussd_dir must not be empty"), std::string::npos);
 }
 
 TEST(ConfigTest, RejectsUnknownSetting) {

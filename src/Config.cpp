@@ -66,10 +66,14 @@ bool LoadSmsDaemonConfig(const std::string& path, SmsDaemonConfig& config, std::
             config.device = value;
         else if(key == "job_dir")
             config.jobDir = value;
-        else if(key == "sms_dir")
+        else if(key == "sms_dir") {
             config.smsDir = value;
-        else if(key == "ussd_dir")
+            config.smsDirConfigured = true;
+        }
+        else if(key == "ussd_dir") {
             config.ussdDir = value;
+            config.ussdDirConfigured = true;
+        }
         else if(key == "log_file")
             config.logFile = value;
         else if(key == "sms_hook")
@@ -94,11 +98,11 @@ bool LoadSmsDaemonConfig(const std::string& path, SmsDaemonConfig& config, std::
         error = path + ": job_dir must not be empty";
         return false;
     }
-    if(config.smsDir.empty()) {
+    if(config.smsDirConfigured && config.smsDir.empty()) {
         error = path + ": sms_dir must not be empty";
         return false;
     }
-    if(config.ussdDir.empty()) {
+    if(config.ussdDirConfigured && config.ussdDir.empty()) {
         error = path + ": ussd_dir must not be empty";
         return false;
     }

@@ -42,6 +42,8 @@ class CSmsDaemon {
     std::string m_SmsInDir{IN_SMS_XML_DIR};
     std::string m_UssdInDir{IN_SMS_XML_DIR};
     std::string m_LogFile{SMS_LOG_FILE};
+    bool m_SmsXmlEnabled{true};
+    bool m_UssdXmlEnabled{true};
     std::vector<std::string> m_SmsHooks{};
     bool m_Debug{false};
     CRSSerial m_Connector;
@@ -70,6 +72,8 @@ class CSmsDaemon {
 public:
     const std::string& SmsInDir() const { return m_SmsInDir; }
     const std::string& UssdInDir() const { return m_UssdInDir; }
+    bool SmsXmlEnabled() const { return m_SmsXmlEnabled; }
+    bool UssdXmlEnabled() const { return m_UssdXmlEnabled; }
     const std::string& JobDir() const { return m_OutSmsMailDir; }
     const std::string& LogFile() const { return m_LogFile; }
     const std::vector<std::string>& SmsHooks() const { return m_SmsHooks; }
