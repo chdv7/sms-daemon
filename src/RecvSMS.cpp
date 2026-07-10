@@ -248,16 +248,17 @@ string GetTimeStamp(const char* s) {
     if(strlen(s) < 14)
         return out;
 
-    out += s[5]; // day
-    out += s[4];
-    out += '.';
-
-    out += s[3]; // mon
-    out += s[2];
-    out += '.';
-
+    out += "20";
     out += s[1]; // year
     out += s[0];
+    out += '-';
+
+    out += s[3]; // month
+    out += s[2];
+    out += '-';
+
+    out += s[5]; // day
+    out += s[4];
     out += ' ';
 
     out += s[7]; // hour
@@ -271,12 +272,12 @@ string GetTimeStamp(const char* s) {
     out += s[11]; // sec
     out += s[10];
 
-    char tmp3[3] = {s[13], s[12], 0};
-    int i_tz = 1000;
-
-    if((sscanf(tmp3, "%d", &i_tz) == 1) && (i_tz != 1000)) {
+    const int tzOctet = GetInt(s + 12);
+    if(tzOctet >= 0) {
+        const bool negative = (tzOctet & 0x08) != 0;
+        const int quarters = ((tzOctet & 0x70) >> 4) + ((tzOctet & 0x07) * 10);
         char tmp30[30];
-        sprintf(tmp30, " UTC+%02d:%02d", i_tz >> 2, (i_tz & 3) * 15);
+        sprintf(tmp30, " UTC%c%02d:%02d", negative ? '-' : '+', quarters / 4, (quarters % 4) * 15);
         out += tmp30;
     }
 

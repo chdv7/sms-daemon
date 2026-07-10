@@ -3,6 +3,7 @@
 
 // твой заголовок, путь подстрой
 #include "../src/PduSMS.h"
+#include "../src/RecvSMS.h"
 namespace chdv::sms_daemon::test {
 TEST(PduSmsTest, SimpleSMS_7bit){
     auto result = COutPduSms ("+70123456789", "Test").ParseText();
@@ -25,6 +26,12 @@ TEST(PduSmsTest, SimpleSMS_7bit){
 //     EXPECT_EQ(result[0], "0001000B910721436587F9000004D4F29C0E");
 // }
 
+
+TEST(PduSmsTest, IncomingSmsTimestampUsesIsoDate){
+    CRecvSMSPart part;
+    ASSERT_EQ(0, part.ProcessRecvPDU("00040B910721436587F900006260922153942104D4F29C0E"));
+    EXPECT_EQ("2026-06-29 12:35:49 UTC+03:00", part.m_TimeStamp);
+}
 
 TEST(PduSmsTest, SimpleSMS_Utf8){
     COutPduSms pdu("+70123456789", "Test");

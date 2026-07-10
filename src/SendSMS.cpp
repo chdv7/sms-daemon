@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include <sys/timeb.h>
 #include <unistd.h>
 #include <string.h>
 #include <string>
@@ -21,10 +20,11 @@ Usage: sms-send [-c <config>] <phoneNo|ussd> [<out folder>]\n\
 
 std::string GenUniqueID() {
     static unsigned counter = 0;
+    const auto now = std::chrono::system_clock::now();
+    const auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+
     char buf[100] = "--";
-    struct timeb tt;
-    ftime(&tt);
-    sprintf(buf, "%08X-%08lX-%08X", getpid(), tt.time * 1000 + tt.millitm, counter++);
+    snprintf(buf, sizeof(buf), "%08X-%08llX-%08X", getpid(), static_cast<long long>(milliseconds), counter++);
     return buf;
 }
 

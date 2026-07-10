@@ -61,7 +61,7 @@ TEST(UssdTest, XmlContainsRequestAndSendTime) {
     response.receiveTime = 1700000005;
     response.interface = "/dev/ttyUSB2";
     response.imsi = "250020000000001";
-    response.imei = "352965049645870";
+    response.imei = "352964812937045";
     response.text = "Balance";
 
     XMLNode xml = GenXML(response, false);
@@ -69,7 +69,7 @@ TEST(UssdTest, XmlContainsRequestAndSendTime) {
     EXPECT_NE(xml.getAttribute("SendTime"), nullptr);
     EXPECT_STREQ(xml.getAttribute("Interface"), "/dev/ttyUSB2");
     EXPECT_STREQ(xml.getAttribute("IMSI"), "250020000000001");
-    EXPECT_STREQ(xml.getAttribute("IMEI"), "352965049645870");
+    EXPECT_STREQ(xml.getAttribute("IMEI"), "352964812937045");
 }
 
 TEST(SmsXmlTest, DebugFlagControlsParts) {
@@ -85,12 +85,12 @@ TEST(SmsXmlTest, DebugFlagControlsParts) {
 
     ReceivedSMS sms(std::move(part), "/dev/ttyUSB2");
     sms.m_IMSI = "250020000000001";
-    sms.m_IMEI = "352965049645870";
+    sms.m_IMEI = "352964812937045";
 
     XMLNode noDebug = GenXML(sms, false, false);
     EXPECT_TRUE(noDebug.getChildNode("Part").isEmpty());
     EXPECT_STREQ(noDebug.getAttribute("IMSI"), "250020000000001");
-    EXPECT_STREQ(noDebug.getAttribute("IMEI"), "352965049645870");
+    EXPECT_STREQ(noDebug.getAttribute("IMEI"), "352964812937045");
 
     XMLNode debug = GenXML(sms, true, true);
     XMLNode xPart = debug.getChildNode("Part");

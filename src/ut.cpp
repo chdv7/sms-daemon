@@ -3,7 +3,6 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/timeb.h>
 
 #include <ctime>
 #include <iomanip>
