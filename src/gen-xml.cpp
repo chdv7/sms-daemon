@@ -44,6 +44,10 @@ XMLNode GenXML(const ReceivedSMS& sms, bool includeParts, bool debugFlag) {
 
     xSms.addAttribute("status", sms.isOk ? "Received" : "Bad");
     xSms.addAttribute("Interface", sms.m_Interface.c_str());
+    if(!sms.m_IMSI.empty())
+        xSms.addAttribute("IMSI", sms.m_IMSI.c_str());
+    if(!sms.m_IMEI.empty())
+        xSms.addAttribute("IMEI", sms.m_IMEI.c_str());
     sprintf(tmp, "%zu", sms.m_nParts);
     xSms.addAttribute("nParts", tmp);
 
@@ -72,6 +76,10 @@ XMLNode GenXML(const ReceivedUssd& ussd, bool debugFlag) {
         xUssd.addAttribute("SendTime", toLocalTime(ussd.sendTime).c_str());
     xUssd.addAttribute("ReceiveTime", toLocalTime(ussd.receiveTime).c_str());
     xUssd.addAttribute("Interface", ussd.interface.c_str());
+    if(!ussd.imsi.empty())
+        xUssd.addAttribute("IMSI", ussd.imsi.c_str());
+    if(!ussd.imei.empty())
+        xUssd.addAttribute("IMEI", ussd.imei.c_str());
     if(debugFlag)
         xUssd.addAttribute("raw", ussd.raw.c_str());
     xUssd.addText(ussd.text.c_str());

@@ -14,6 +14,8 @@ struct ReceivedUssd {
     std::string text;
     std::string raw;
     std::string interface;
+    std::string imsi;
+    std::string imei;
     time_t receiveTime{time(nullptr)};
 };
 

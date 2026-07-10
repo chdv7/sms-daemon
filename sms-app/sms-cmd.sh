@@ -42,6 +42,8 @@ incoming_number=${2:-}
 sent_time=${3:-}
 receive_time=${4:-}
 smsc=${5:-}
+imsi=${6:-}
+imei=${7:-}
 
 # Append an audit line. This is intentionally separate from SMS replies:
 # command output may be sent back to the user, audit data stays local.
@@ -50,10 +52,12 @@ log_msg() {
     local dir
     dir=$(dirname -- "$LOG_FILE")
     mkdir -p -- "$dir" 2>/dev/null || true
-    printf '%s from=%s level=%s request=%q %s\n' \
+    printf '%s from=%s level=%s imsi=%s imei=%s request=%q %s\n' \
         "$(date '+%Y-%m-%d %H:%M:%S')" \
         "${incoming_number:-unknown}" \
         "${level:-unknown}" \
+        "${imsi:-unknown}" \
+        "${imei:-unknown}" \
         "$request" \
         "$message" >> "$LOG_FILE"
 }
@@ -242,6 +246,15 @@ read_cpu_percent() {
     fi
 }
 
+cmd_modem() {
+    require_level 2
+    require_no_args "$@" || return 1
+
+    reply "IMSI: ${imsi:-unknown}
+IMEI: ${imei:-unknown}"
+    log_msg "done command=modem"
+}
+
 cmd_diag() {
     require_level 1
     require_no_args "$@" || return 1
@@ -283,6 +296,7 @@ diag
 read t<N>'
     if (( level >= 2 )); then
         text+=$'
+modem
 pon gprs
 pon pptp'
     fi
@@ -386,6 +400,9 @@ case "$command_name" in
         ;;
     diag)
         cmd_diag "${command_args[@]}"
+        ;;
+    modem)
+        cmd_modem "${command_args[@]}"
         ;;
     help)
         cmd_help "${command_args[@]}"

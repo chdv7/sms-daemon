@@ -471,8 +471,10 @@ void CRecvSMSProcessor::clearCache() {
     for(auto& entry : cache)
         if((now - entry.second.lastUpdate) > smsPartTimeout_) {
             expiredEntries.push_back(entry.first);
-            if(onSmsCallBack)
-                onSmsCallBack(ReceivedSMS(std::move(entry.second.parts), m_InterfaceID));
+            if(onSmsCallBack) {
+                ReceivedSMS receivedSMS(std::move(entry.second.parts), m_InterfaceID);
+                onSmsCallBack(receivedSMS);
+            }
         }
 
     for(auto& entryKey : expiredEntries) {

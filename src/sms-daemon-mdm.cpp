@@ -163,6 +163,25 @@ bool isHexDecChar(char chr) {
     return chr & 0x80 ? false : HexDecChars[(int)chr];
 }
 
+std::string ExtractNumericIdentifier(const char* log) {
+    std::string best;
+    std::string current;
+    const char* ptr = log ? log : "";
+    for(; *ptr; ++ptr) {
+        if(std::isdigit(static_cast<unsigned char>(*ptr))) {
+            current += *ptr;
+        }
+        else {
+            if(current.size() > best.size())
+                best = current;
+            current.clear();
+        }
+    }
+    if(current.size() > best.size())
+        best = current;
+    return best;
+}
+
 void CSmsDaemon::Setup(const std::string& configPath, bool configRequired) {
     SmsDaemonConfig config;
     std::string error;
@@ -190,12 +209,23 @@ int CSmsDaemon::Go() {
     return Do();
 }
 
+std::string CSmsDaemon::QueryModemIdentifier(const char* command) {
+    char log[1024] = "";
+    const int err = m_Connector.SendExpect(command, answers, 3000, log, sizeof(log));
+    ProcessModemInput(log);
+    if(err)
+        return std::string();
+    return ExtractNumericIdentifier(log);
+}
+
 void CSmsDaemon::Init() {
     m_RecvSMSProcessor.Init(m_CachePath, m_DeviceName);
-    m_RecvSMSProcessor.SetSmsCallBack([this](const ReceivedSMS& sms) {
-        for (auto& cb : m_SmsInCallback)
-            cb (sms);
-     });
+    m_RecvSMSProcessor.SetSmsCallBack([this](ReceivedSMS& sms) {
+        sms.m_IMSI = m_Imsi;
+        sms.m_IMEI = m_Imei;
+        for(auto& cb : m_SmsInCallback)
+            cb(sms);
+    });
 
     int err = m_Connector.Open(m_DeviceName.c_str());
     if(err < 0)
@@ -217,6 +247,11 @@ void CSmsDaemon::Init() {
     err = m_Connector.SendExpect("AT+CMGF=0\r", answers);
     if(err)
         printf("AT+CMGF error %d\n", err);
+
+    m_Imsi = QueryModemIdentifier("AT+CIMI\r");
+    m_Imei = QueryModemIdentifier("AT+CGSN\r");
+    std::cout << "IMSI: " << (m_Imsi.empty() ? "unknown" : m_Imsi) << std::endl;
+    std::cout << "IMEI: " << (m_Imei.empty() ? "unknown" : m_Imei) << std::endl;
 
     err = m_Connector.SendExpect("AT+CPMS=\"SM\",\"SM\",\"SM\"\r", answers);
     if(err)
@@ -256,6 +291,8 @@ void CSmsDaemon::DoProcessModemInput() {
 
 void CSmsDaemon::EmitUssdResponse(ReceivedUssd ussd) {
     ussd.interface = m_DeviceName;
+    ussd.imsi = m_Imsi;
+    ussd.imei = m_Imei;
     ussd.request = m_LastUssdRequest;
     ussd.sendTime = m_LastUssdSendTime;
     for(auto& cb : m_UssdInCallback)

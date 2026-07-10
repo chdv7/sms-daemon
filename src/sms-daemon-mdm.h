@@ -42,6 +42,8 @@ class CSmsDaemon {
     std::string m_SmsInDir{IN_SMS_XML_DIR};
     std::string m_UssdInDir{IN_SMS_XML_DIR};
     std::string m_LogFile{SMS_LOG_FILE};
+    std::string m_Imsi{};
+    std::string m_Imei{};
     bool m_SmsXmlEnabled{true};
     bool m_UssdXmlEnabled{true};
     std::vector<std::string> m_SmsHooks{};
@@ -56,6 +58,7 @@ class CSmsDaemon {
     void DoProcessModemInput();
     bool ProcessModemInput(const std::string& input);
     void EmitUssdResponse(ReceivedUssd ussd);
+    std::string QueryModemIdentifier(const char* command);
     TSmsBlock GetSmsBlockFromModem();
     TSmsBlock GetSmsBlockByCMGR();
     TSmsBlock GetSmsBlockByCMGL();
@@ -76,6 +79,8 @@ public:
     bool UssdXmlEnabled() const { return m_UssdXmlEnabled; }
     const std::string& JobDir() const { return m_OutSmsMailDir; }
     const std::string& LogFile() const { return m_LogFile; }
+    const std::string& Imsi() const { return m_Imsi; }
+    const std::string& Imei() const { return m_Imei; }
     const std::vector<std::string>& SmsHooks() const { return m_SmsHooks; }
     bool Debug() const { return m_Debug; }
     CSmsDaemon() {

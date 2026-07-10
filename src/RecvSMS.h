@@ -93,6 +93,8 @@ public:
     time_t m_RecvTime{};
     std::vector<std::unique_ptr<CRecvSMSPart>> parts;
     std::string m_Interface;
+    std::string m_IMSI;
+    std::string m_IMEI;
     bool isOk{true};
 
 private:
@@ -107,7 +109,7 @@ public:
     //  int m_nPartsProcessed{};
     time_t smsPartTimeout_{600};
     int Init(string cachePath, string interfaceID);
-    void SetSmsCallBack(std::function<void(const ReceivedSMS&)> fn) {
+    void SetSmsCallBack(std::function<void(ReceivedSMS&)> fn) {
         onSmsCallBack = fn;
     }
     int processPDU(const char* pdu);
@@ -116,7 +118,7 @@ public:
 protected:
     int ProcessPart(std::unique_ptr<CRecvSMSPart> sms);
     string m_InterfaceID{};
-    std::function<void(const ReceivedSMS&)> onSmsCallBack{};
+    std::function<void(ReceivedSMS&)> onSmsCallBack{};
     SmsCache cache;
     int64_t m_LastProcessedItemID;
     std::string m_sCachePath;

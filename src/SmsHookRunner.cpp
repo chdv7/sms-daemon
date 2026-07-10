@@ -29,13 +29,15 @@ int RunSmsHook(const std::string& hook, const ReceivedSMS& sms) {
 
     if(pid == 0) {
         std::vector<char*> argv;
-        argv.reserve(7);
+        argv.reserve(9);
         argv.push_back(const_cast<char*>(hook.c_str()));
         argv.push_back(const_cast<char*>(text.c_str()));
         argv.push_back(const_cast<char*>(from.c_str()));
         argv.push_back(const_cast<char*>(sentTime.c_str()));
         argv.push_back(const_cast<char*>(recvTime.c_str()));
         argv.push_back(const_cast<char*>(smsc.c_str()));
+        argv.push_back(const_cast<char*>(sms.m_IMSI.c_str()));
+        argv.push_back(const_cast<char*>(sms.m_IMEI.c_str()));
         argv.push_back(nullptr);
         execvp(hook.c_str(), argv.data());
         _exit(127);

@@ -26,6 +26,8 @@ Arguments are passed without shell expansion:
     argv[3] sent timestamp from SMS/PDU
     argv[4] daemon receive timestamp
     argv[5] SMS center number
+    argv[6] IMSI
+    argv[7] IMEI
 
 
 Install and run as a Linux daemon with systemd:
