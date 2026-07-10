@@ -30,19 +30,74 @@ Arguments are passed without shell expansion:
     argv[7] IMEI
 
 
-Install and run as a Linux daemon with systemd:
+Build with CMake, step by step:
 
-    cmake -S . -B build -DBUILD_TESTING=ON
-    cmake --build build
-    sudo cmake --install build
-    sudo systemctl daemon-reload
-    sudo systemctl enable --now sms-daemon.service
+1. Install the basic build tools. On Debian, Ubuntu, or Raspberry Pi OS:
 
-The service runs `sms-daemon` in foreground mode and reads `/etc/sms-daemon/config.cfg`.
-Check status and logs with:
+       sudo apt update
+       sudo apt install build-essential cmake
 
-    systemctl status sms-daemon.service
-    journalctl -u sms-daemon.service -f
+   GoogleTest is optional. Install it only if you want to build and run unit tests:
+
+       sudo apt install libgtest-dev
+
+2. Configure the project. Run this command from the project root directory:
+
+       cmake -S . -B build -DBUILD_TESTING=OFF
+
+   `-S .` means: source files are in the current directory.
+   `-B build` means: put all temporary CMake files and object files into `build/`.
+   `-DBUILD_TESTING=OFF` means: do not build unit tests, so GoogleTest is not needed.
+
+3. Build the programs:
+
+       cmake --build build
+
+   After this, the binaries are here:
+
+       build/sms-daemon
+       build/sms-send
+
+4. To build with tests, configure with testing enabled:
+
+       cmake -S . -B build -DBUILD_TESTING=ON
+       cmake --build build
+
+   If GoogleTest is installed, CMake also builds `build/sms-tests`.
+   If GoogleTest is not installed, CMake prints a message and still builds `sms-daemon` and `sms-send`.
+
+5. Run tests when they are built:
+
+       ctest --test-dir build -V
+
+   Or run the test binary directly:
+
+       ./build/sms-tests
+
+6. Install the project system-wide:
+
+       sudo cmake --install build
+
+   This installs `sms-daemon`, `sms-send`, the default config under `/etc/sms-daemon/`, and the systemd unit.
+
+7. Enable and start the Linux daemon through systemd:
+
+       sudo systemctl daemon-reload
+       sudo systemctl enable --now sms-daemon.service
+
+   The service runs `sms-daemon` in foreground mode and reads `/etc/sms-daemon/config.cfg`.
+   Check status and logs with:
+
+       systemctl status sms-daemon.service
+       journalctl -u sms-daemon.service -f
+
+8. Clean CMake temporary files when you want a fresh build:
+
+       rm -rf build
+       cmake -S . -B build -DBUILD_TESTING=OFF
+       cmake --build build
+
+   If only CMake configuration is stale, removing `build/CMakeCache.txt` is often enough, but deleting the whole `build/` directory is simpler and safer for beginners.
 
 Send an SMS body from stdin:
 

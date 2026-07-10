@@ -92,33 +92,33 @@ install(SCRIPT ${CMAKE_CURRENT_BINARY_DIR}/install_sms_daemon.cmake)
 #      ТЕСТЫ (gtest)
 # ========================
 
-option(BUILD_TESTING "Build unit tests" ON)
+include(CTest)
 
 if (BUILD_TESTING)
-    enable_testing()
+    find_package(GTest QUIET)
 
-    # Ищем установленный GoogleTest
-    find_package(GTest REQUIRED)
+    if (GTest_FOUND)
+        add_executable(sms-tests
+            tests/test_pdu.cpp
+            tests/test_ussd.cpp
+            tests/test_config.cpp
+            # сюда добавишь другие тестовые файлы по мере надобности
+            # tests/test_serial.cpp
+            # tests/test_xml.cpp
+        )
 
-    # Тестовый бинарник
-    add_executable(sms-tests
-        tests/test_pdu.cpp
-        tests/test_ussd.cpp
-        tests/test_config.cpp
-        # сюда добавишь другие тестовые файлы по мере надобности
-        # tests/test_serial.cpp
-        # tests/test_xml.cpp
-    )
+        target_link_libraries(sms-tests
+            PRIVATE
+                sms-core
+                GTest::GTest
+                GTest::Main
+        )
 
-    target_link_libraries(sms-tests
-        PRIVATE
-            sms-core
-            GTest::GTest
-            GTest::Main
-    )
-
-    # Регистрируем один тест в CTest – он внутри уже запустит все gtest-тесты
-    add_test(NAME sms-tests COMMAND sms-tests)
+        # Регистрируем один тест в CTest – он внутри уже запустит все gtest-тесты
+        add_test(NAME sms-tests COMMAND sms-tests)
+    else()
+        message(STATUS "GoogleTest not found; sms-tests target is disabled")
+    endif()
 endif()
 #
 #
