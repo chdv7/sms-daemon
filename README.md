@@ -3,6 +3,8 @@ A small SMS and USSD sender/receiver for 2G/3G/4G modem.
 
 Tested with Huawei e1550
 
+For Raspberry Pi mobile internet setup through Huawei E1550, see `docs/raspberry-pi-e1550-internet.md`. A typical PPP setup script is available at `scripts/setup-e1550-ppp.sh`.
+
 Configuration is read from `/etc/sms-daemon/config.cfg` by default. The config file must exist; if a key is missing, the compiled default is used. Use another file with `-c`:
 
     sms-daemon -c /path/to/config.cfg
