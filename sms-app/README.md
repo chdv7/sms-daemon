@@ -14,3 +14,14 @@ Arguments are passed without shell expansion:
     argv[7] IMEI
 
 `sms-cmd.sh` reads IMSI and IMEI from these arguments, writes them to the audit log, and exposes them through the `modem` SMS command for active users.
+
+Supported network control commands for supervisor/admin users:
+
+    pon gprs
+    pon vpn
+    pon auto
+    poff gprs
+    poff vpn
+    poff all
+
+`pon gprs` and `pon vpn` call the matching `pon` profile. `poff gprs` and `poff vpn` call the matching `poff` profile. `poff all` calls `poff -a`. `pon auto` calls `poff -a`, waits 3 seconds, starts `pon gprs`, waits until `ppp0` gets an IPv4 address, and then starts `pon vpn`.

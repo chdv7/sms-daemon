@@ -33,8 +33,12 @@ READ_TEMPERATURE_CMD=${READ_TEMPERATURE_CMD:-/usr/local/bin/read-temperature}
 MAX_TEMPERATURE_SENSOR=${MAX_TEMPERATURE_SENSOR:-1000}
 VCC_CMD=${VCC_CMD:-}
 VCC_PATH=${VCC_PATH:-}
+GPRS_CONNECT_TIMEOUT=${GPRS_CONNECT_TIMEOUT:-45}
 if ! [[ "$MAX_TEMPERATURE_SENSOR" =~ ^[0-9]+$ ]] || (( MAX_TEMPERATURE_SENSOR < 1 )); then
     MAX_TEMPERATURE_SENSOR=1000
+fi
+if ! [[ "$GPRS_CONNECT_TIMEOUT" =~ ^[0-9]+$ ]] || (( GPRS_CONNECT_TIMEOUT < 1 )); then
+    GPRS_CONNECT_TIMEOUT=45
 fi
 
 request=${1:-}
@@ -141,21 +145,96 @@ cmd_reboot() {
     run_backend "reboot" /sbin/reboot
 }
 
+run_command_quiet() {
+    local title=$1
+    shift
+
+    log_msg "run command=$title argv=$*"
+    if [[ "$DRY_RUN" == "1" ]]; then
+        log_msg "dry_run command=$title"
+        return 0
+    fi
+
+    local output rc
+    output=$("$@" 2>&1)
+    rc=$?
+    log_msg "done command=$title rc=$rc output=$(printf '%q' "$output")"
+    if (( rc != 0 )); then
+        if [[ -n "$output" ]]; then
+            reply "ERROR $rc: $output"
+        else
+            reply "ERROR $rc: $title"
+        fi
+    fi
+    return "$rc"
+}
+
+wait_for_gprs_connection() {
+    local deadline=$((SECONDS + GPRS_CONNECT_TIMEOUT))
+    while (( SECONDS < deadline )); do
+        if ip -4 -o addr show ppp0 2>/dev/null | grep -q 'inet '; then
+            return 0
+        fi
+        sleep 1
+    done
+    return 1
+}
+
+cmd_pon_auto() {
+    run_command_quiet "poff all" /usr/bin/poff -a || return 1
+    sleep 3
+    run_command_quiet "pon gprs" /usr/bin/pon gprs || return 1
+    if [[ "$DRY_RUN" != "1" ]] && ! wait_for_gprs_connection; then
+        reply "ERROR: gprs connection timeout"
+        log_msg "failed command=pon_auto reason=gprs_timeout timeout=$GPRS_CONNECT_TIMEOUT"
+        return 1
+    fi
+    run_command_quiet "pon vpn" /usr/bin/pon vpn || return 1
+    reply "OK: pon auto"
+    log_msg "done command=pon_auto"
+}
+
 cmd_pon() {
     require_level 2
     if (( $# != 1 )); then
-        reply "Usage: pon gprs|pptp"
+        reply "Usage: pon gprs|vpn|auto"
         log_msg "rejected command=pon reason=bad_arg_count count=$#"
         return 1
     fi
 
     case "$1" in
-        gprs|pptp)
+        gprs|vpn)
             run_backend "pon $1" /usr/bin/pon "$1"
+            ;;
+        auto)
+            cmd_pon_auto
             ;;
         *)
             reply "Unknown pon profile: $1"
             log_msg "rejected command=pon reason=unknown_profile profile=$1"
+            return 1
+            ;;
+    esac
+}
+
+cmd_poff() {
+    require_level 2
+    if (( $# != 1 )); then
+        reply "Usage: poff gprs|vpn|all"
+        log_msg "rejected command=poff reason=bad_arg_count count=$#"
+        return 1
+    fi
+
+    case "$1" in
+        gprs|vpn)
+            run_backend "poff $1" /usr/bin/poff "$1"
+            ;;
+        all)
+            run_backend "poff all" /usr/bin/poff -a
+            ;;
+        *)
+            reply "Unknown poff profile: $1"
+            log_msg "rejected command=poff reason=unknown_profile profile=$1"
             return 1
             ;;
     esac
@@ -298,7 +377,11 @@ read t<N>'
         text+=$'
 modem
 pon gprs
-pon pptp'
+pon vpn
+pon auto
+poff gprs
+poff vpn
+poff all'
     fi
     if (( level >= 3 )); then
         text+=$'
@@ -394,6 +477,9 @@ case "$command_name" in
         ;;
     pon)
         cmd_pon "${command_args[@]}"
+        ;;
+    poff)
+        cmd_poff "${command_args[@]}"
         ;;
     read)
         cmd_read "${command_args[@]}"
