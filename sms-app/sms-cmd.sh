@@ -24,6 +24,7 @@ declare -A user_access
 SMS_SEND=${SMS_SEND:-sms-send}
 LOG_FILE=${SMS_CMD_LOG:-/tmp/sms-daemon/sms-cmd.log}
 DRY_RUN=${SMS_CMD_DRY_RUN:-0}
+COMMAND_TIMEOUT=${SMS_CMD_COMMAND_TIMEOUT:-45}
 
 # Backend for parameterized "read t<N>".
 # For "read t789" it is called as: $READ_TEMPERATURE_CMD t789
@@ -33,12 +34,15 @@ READ_TEMPERATURE_CMD=${READ_TEMPERATURE_CMD:-/usr/local/bin/read-temperature}
 MAX_TEMPERATURE_SENSOR=${MAX_TEMPERATURE_SENSOR:-1000}
 VCC_CMD=${VCC_CMD:-}
 VCC_PATH=${VCC_PATH:-}
-GPRS_CONNECT_TIMEOUT=${GPRS_CONNECT_TIMEOUT:-45}
+GPRS_CONNECT_TIMEOUT=${GPRS_CONNECT_TIMEOUT:-$COMMAND_TIMEOUT}
+if ! [[ "$COMMAND_TIMEOUT" =~ ^[0-9]+$ ]] || (( COMMAND_TIMEOUT < 1 )); then
+    COMMAND_TIMEOUT=45
+fi
 if ! [[ "$MAX_TEMPERATURE_SENSOR" =~ ^[0-9]+$ ]] || (( MAX_TEMPERATURE_SENSOR < 1 )); then
     MAX_TEMPERATURE_SENSOR=1000
 fi
 if ! [[ "$GPRS_CONNECT_TIMEOUT" =~ ^[0-9]+$ ]] || (( GPRS_CONNECT_TIMEOUT < 1 )); then
-    GPRS_CONNECT_TIMEOUT=45
+    GPRS_CONNECT_TIMEOUT=$COMMAND_TIMEOUT
 fi
 
 request=${1:-}
@@ -70,7 +74,7 @@ log_msg() {
 reply() {
     local text=$1
     if [[ -n "$incoming_number" && "$incoming_number" =~ ^\+[0-9]+$ ]]; then
-        printf '%s' "$text" | "$SMS_SEND" "$incoming_number" >/dev/null 2>&1 || true
+        printf '%s' "$text" | run_with_timeout "$SMS_SEND" "$incoming_number" >/dev/null 2>&1 || true
     fi
     printf '%s\n' "$text"
 }
@@ -97,18 +101,36 @@ require_level() {
 
 # Run a configured backend command. Arguments are passed as argv, not through
 # eval or sh -c, so SMS text cannot inject shell syntax.
+run_with_timeout() {
+    /usr/bin/timeout --kill-after=5s "${COMMAND_TIMEOUT}s" "$@"
+}
+
+format_command_error() {
+    local rc=$1
+    local title=$2
+    local output=$3
+
+    if (( rc == 124 || rc == 137 )); then
+        reply "ERROR: timeout ${COMMAND_TIMEOUT}s: $title"
+    elif [[ -n "$output" ]]; then
+        reply "ERROR $rc: $output"
+    else
+        reply "ERROR $rc: $title"
+    fi
+}
+
 run_backend() {
     local title=$1
     shift
 
-    log_msg "run command=$title argv=$*"
+    log_msg "run command=$title timeout=${COMMAND_TIMEOUT}s argv=$*"
     if [[ "$DRY_RUN" == "1" ]]; then
         reply "DRY RUN: $title"
         return 0
     fi
 
     local output rc
-    output=$("$@" 2>&1)
+    output=$(run_with_timeout "$@" 2>&1)
     rc=$?
     log_msg "done command=$title rc=$rc output=$(printf '%q' "$output")"
 
@@ -119,11 +141,7 @@ run_backend() {
             reply "OK: $title"
         fi
     else
-        if [[ -n "$output" ]]; then
-            reply "ERROR $rc: $output"
-        else
-            reply "ERROR $rc: $title"
-        fi
+        format_command_error "$rc" "$title" "$output"
     fi
     return "$rc"
 }
@@ -149,22 +167,18 @@ run_command_quiet() {
     local title=$1
     shift
 
-    log_msg "run command=$title argv=$*"
+    log_msg "run command=$title timeout=${COMMAND_TIMEOUT}s argv=$*"
     if [[ "$DRY_RUN" == "1" ]]; then
         log_msg "dry_run command=$title"
         return 0
     fi
 
     local output rc
-    output=$("$@" 2>&1)
+    output=$(run_with_timeout "$@" 2>&1)
     rc=$?
     log_msg "done command=$title rc=$rc output=$(printf '%q' "$output")"
     if (( rc != 0 )); then
-        if [[ -n "$output" ]]; then
-            reply "ERROR $rc: $output"
-        else
-            reply "ERROR $rc: $title"
-        fi
+        format_command_error "$rc" "$title" "$output"
     fi
     return "$rc"
 }
@@ -181,7 +195,9 @@ wait_for_gprs_connection() {
 }
 
 cmd_pon_auto() {
-    run_command_quiet "poff all" /usr/bin/poff -a || return 1
+    if ! run_command_quiet "poff all" /usr/bin/poff -a; then
+        log_msg "ignored command=pon_auto step=poff_all"
+    fi
     sleep 3
     run_command_quiet "pon gprs" /usr/bin/pon gprs || return 1
     if [[ "$DRY_RUN" != "1" ]] && ! wait_for_gprs_connection; then
@@ -267,7 +283,7 @@ read_vcc_value() {
     local value path label input
 
     if [[ -n "$VCC_CMD" ]]; then
-        "$VCC_CMD" 2>/dev/null || printf 'n/a'
+        run_with_timeout "$VCC_CMD" 2>/dev/null || printf 'n/a'
         return
     fi
     if [[ -n "$VCC_PATH" && -r "$VCC_PATH" ]]; then

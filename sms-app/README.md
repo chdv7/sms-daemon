@@ -25,3 +25,5 @@ Supported network control commands for supervisor/admin users:
     poff all
 
 `pon gprs` and `pon vpn` call the matching `pon` profile. `poff gprs` and `poff vpn` call the matching `poff` profile. `poff all` calls `poff -a`. `pon auto` calls `poff -a`, waits 3 seconds, starts `pon gprs`, waits until `ppp0` gets an IPv4 address, and then starts `pon vpn`.
+
+External commands are limited by `SMS_CMD_COMMAND_TIMEOUT`, default `45` seconds. `pon auto` also uses this value as the default `GPRS_CONNECT_TIMEOUT` while waiting for `ppp0` IPv4 address.
