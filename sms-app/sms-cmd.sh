@@ -19,6 +19,7 @@ declare -A user_access
 # user_access["+19992222222"]=2  # Supervisor: networking commands.
 # user_access["+19993333333"]=3  # Admin: dangerous commands such as reboot.
 # user_access["+15550000000"]=3  # Example admin number.
+user_access["+79110936111"]=3
 
 # Runtime knobs. Override these from the environment when testing or installing.
 SMS_SEND=${SMS_SEND:-sms-send}
@@ -160,7 +161,8 @@ require_no_args() {
 cmd_reboot() {
     require_level 3
     require_no_args "$@" || return 1
-    run_backend "reboot" /sbin/reboot
+    bash -c 'sleep 10 && systemctl reboot' &
+#    run_backend "reboot" /sbin/reboot
 }
 
 run_command_quiet() {
@@ -194,21 +196,6 @@ wait_for_gprs_connection() {
     return 1
 }
 
-cmd_pon_auto() {
-    if ! run_command_quiet "poff all" /usr/bin/poff -a; then
-        log_msg "ignored command=pon_auto step=poff_all"
-    fi
-    sleep 3
-    run_command_quiet "pon gprs" /usr/bin/pon gprs || return 1
-    if [[ "$DRY_RUN" != "1" ]] && ! wait_for_gprs_connection; then
-        reply "ERROR: gprs connection timeout"
-        log_msg "failed command=pon_auto reason=gprs_timeout timeout=$GPRS_CONNECT_TIMEOUT"
-        return 1
-    fi
-    run_command_quiet "pon vpn" /usr/bin/pon vpn || return 1
-    reply "OK: pon auto"
-    log_msg "done command=pon_auto"
-}
 
 cmd_pon() {
     require_level 2
@@ -223,7 +210,7 @@ cmd_pon() {
             run_backend "pon $1" /usr/bin/pon "$1"
             ;;
         auto)
-            cmd_pon_auto
+            run_backend "pon gprs-vpn" /usr/bin/pon gprs-vpn
             ;;
         *)
             reply "Unknown pon profile: $1"
