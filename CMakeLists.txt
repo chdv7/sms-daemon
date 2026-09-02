@@ -69,6 +69,12 @@ set(SMS_DAEMON_CONFIG_SRC "${CMAKE_CURRENT_SOURCE_DIR}/sms-daemon.cfg" CACHE FIL
 install(TARGETS sms-daemon sms-send
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
+install(PROGRAMS sms-app/sms-cmd.sh
+        DESTINATION ${SMS_DAEMON_CONFIG_DIR})
+install(DIRECTORY sms-app/commands.d
+        DESTINATION ${SMS_DAEMON_CONFIG_DIR}
+        FILES_MATCHING PATTERN "*.sh")
+
 set(SMS_DAEMON_SYSTEMD_UNIT_DIR "/etc/systemd/system" CACHE PATH "systemd unit directory")
 set(SMS_DAEMON_SERVICE_FILE "${CMAKE_CURRENT_BINARY_DIR}/sms-daemon.service")
 set(BINDIR "${CMAKE_INSTALL_FULL_BINDIR}")

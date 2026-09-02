@@ -27,3 +27,31 @@ Supported network control commands for supervisor/admin users:
 `pon gprs` and `pon vpn` call the matching `pon` profile. `poff gprs` and `poff vpn` call the matching `poff` profile. `poff all` calls `poff -a`. `pon auto` calls `poff -a`, waits 3 seconds, starts `pon gprs`, waits until `ppp0` gets an IPv4 address, and then starts `pon vpn`.
 
 External commands are limited by `SMS_CMD_COMMAND_TIMEOUT`, default `45` seconds. `pon auto` also uses this value as the default `GPRS_CONNECT_TIMEOUT` while waiting for `ppp0` IPv4 address.
+
+## Adding Commands
+
+`sms-cmd.sh` is only a dispatcher. It loads every `*.sh` file from `commands.d` next to the script. After installation the default command directory is `/etc/sms-daemon/commands.d`. A command file must define a handler function and register it:
+
+```bash
+cmd_status() {
+    require_no_args "$@" || return 1
+    reply "OK"
+    log_msg "done command=status"
+}
+
+register_command status cmd_status 1 status
+```
+
+`register_command` arguments are:
+
+```text
+register_command <sms-command> <handler-function> <minimum-access-level> <help-text>
+```
+
+Access levels are `1` for user, `2` for supervisor, and `3` for admin. The handler receives all words after the command name as its arguments.
+
+The command directory can be overridden for tests or local customization:
+
+```bash
+SMS_CMD_COMMAND_DIR=/path/to/commands.d sms-cmd.sh 'status' '+19991111111'
+```
