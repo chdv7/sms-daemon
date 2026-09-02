@@ -24,6 +24,7 @@ declare -A user_access
 SMS_SEND=${SMS_SEND:-sms-send}
 LOG_FILE=${SMS_CMD_LOG:-/tmp/sms-daemon/sms-cmd.log}
 DRY_RUN=${SMS_CMD_DRY_RUN:-0}
+COMMAND_TIMEOUT=${SMS_CMD_COMMAND_TIMEOUT:-45}
 
 # Backend for parameterized "read t<N>".
 # For "read t789" it is called as: $READ_TEMPERATURE_CMD t789
@@ -33,8 +34,15 @@ READ_TEMPERATURE_CMD=${READ_TEMPERATURE_CMD:-/usr/local/bin/read-temperature}
 MAX_TEMPERATURE_SENSOR=${MAX_TEMPERATURE_SENSOR:-1000}
 VCC_CMD=${VCC_CMD:-}
 VCC_PATH=${VCC_PATH:-}
+GPRS_CONNECT_TIMEOUT=${GPRS_CONNECT_TIMEOUT:-$COMMAND_TIMEOUT}
+if ! [[ "$COMMAND_TIMEOUT" =~ ^[0-9]+$ ]] || (( COMMAND_TIMEOUT < 1 )); then
+    COMMAND_TIMEOUT=45
+fi
 if ! [[ "$MAX_TEMPERATURE_SENSOR" =~ ^[0-9]+$ ]] || (( MAX_TEMPERATURE_SENSOR < 1 )); then
     MAX_TEMPERATURE_SENSOR=1000
+fi
+if ! [[ "$GPRS_CONNECT_TIMEOUT" =~ ^[0-9]+$ ]] || (( GPRS_CONNECT_TIMEOUT < 1 )); then
+    GPRS_CONNECT_TIMEOUT=$COMMAND_TIMEOUT
 fi
 
 request=${1:-}
@@ -66,7 +74,7 @@ log_msg() {
 reply() {
     local text=$1
     if [[ -n "$incoming_number" && "$incoming_number" =~ ^\+[0-9]+$ ]]; then
-        printf '%s' "$text" | "$SMS_SEND" "$incoming_number" >/dev/null 2>&1 || true
+        printf '%s' "$text" | run_with_timeout "$SMS_SEND" "$incoming_number" >/dev/null 2>&1 || true
     fi
     printf '%s\n' "$text"
 }
@@ -93,18 +101,36 @@ require_level() {
 
 # Run a configured backend command. Arguments are passed as argv, not through
 # eval or sh -c, so SMS text cannot inject shell syntax.
+run_with_timeout() {
+    /usr/bin/timeout --kill-after=5s "${COMMAND_TIMEOUT}s" "$@"
+}
+
+format_command_error() {
+    local rc=$1
+    local title=$2
+    local output=$3
+
+    if (( rc == 124 || rc == 137 )); then
+        reply "ERROR: timeout ${COMMAND_TIMEOUT}s: $title"
+    elif [[ -n "$output" ]]; then
+        reply "ERROR $rc: $output"
+    else
+        reply "ERROR $rc: $title"
+    fi
+}
+
 run_backend() {
     local title=$1
     shift
 
-    log_msg "run command=$title argv=$*"
+    log_msg "run command=$title timeout=${COMMAND_TIMEOUT}s argv=$*"
     if [[ "$DRY_RUN" == "1" ]]; then
         reply "DRY RUN: $title"
         return 0
     fi
 
     local output rc
-    output=$("$@" 2>&1)
+    output=$(run_with_timeout "$@" 2>&1)
     rc=$?
     log_msg "done command=$title rc=$rc output=$(printf '%q' "$output")"
 
@@ -115,11 +141,7 @@ run_backend() {
             reply "OK: $title"
         fi
     else
-        if [[ -n "$output" ]]; then
-            reply "ERROR $rc: $output"
-        else
-            reply "ERROR $rc: $title"
-        fi
+        format_command_error "$rc" "$title" "$output"
     fi
     return "$rc"
 }
@@ -138,24 +160,83 @@ require_no_args() {
 cmd_reboot() {
     require_level 3
     require_no_args "$@" || return 1
-    run_backend "reboot" /sbin/reboot
+    bash -c 'sleep 10 && systemctl reboot' &
+#    run_backend "reboot" /sbin/reboot
 }
+
+run_command_quiet() {
+    local title=$1
+    shift
+
+    log_msg "run command=$title timeout=${COMMAND_TIMEOUT}s argv=$*"
+    if [[ "$DRY_RUN" == "1" ]]; then
+        log_msg "dry_run command=$title"
+        return 0
+    fi
+
+    local output rc
+    output=$(run_with_timeout "$@" 2>&1)
+    rc=$?
+    log_msg "done command=$title rc=$rc output=$(printf '%q' "$output")"
+    if (( rc != 0 )); then
+        format_command_error "$rc" "$title" "$output"
+    fi
+    return "$rc"
+}
+
+wait_for_gprs_connection() {
+    local deadline=$((SECONDS + GPRS_CONNECT_TIMEOUT))
+    while (( SECONDS < deadline )); do
+        if ip -4 -o addr show ppp0 2>/dev/null | grep -q 'inet '; then
+            return 0
+        fi
+        sleep 1
+    done
+    return 1
+}
+
 
 cmd_pon() {
     require_level 2
     if (( $# != 1 )); then
-        reply "Usage: pon gprs|pptp"
+        reply "Usage: pon gprs|vpn|auto"
         log_msg "rejected command=pon reason=bad_arg_count count=$#"
         return 1
     fi
 
     case "$1" in
-        gprs|pptp)
+        gprs|vpn)
             run_backend "pon $1" /usr/bin/pon "$1"
+            ;;
+        auto)
+            run_backend "pon gprs-vpn" /usr/bin/pon gprs-vpn
             ;;
         *)
             reply "Unknown pon profile: $1"
             log_msg "rejected command=pon reason=unknown_profile profile=$1"
+            return 1
+            ;;
+    esac
+}
+
+cmd_poff() {
+    require_level 2
+    if (( $# != 1 )); then
+        reply "Usage: poff gprs|vpn|all"
+        log_msg "rejected command=poff reason=bad_arg_count count=$#"
+        return 1
+    fi
+
+    case "$1" in
+        gprs|vpn)
+            run_backend "poff $1" /usr/bin/poff "$1"
+            ;;
+        all)
+            run_backend "poff all" /usr/bin/poff -a
+            ;;
+        *)
+            reply "Unknown poff profile: $1"
+            log_msg "rejected command=poff reason=unknown_profile profile=$1"
             return 1
             ;;
     esac
@@ -188,7 +269,7 @@ read_vcc_value() {
     local value path label input
 
     if [[ -n "$VCC_CMD" ]]; then
-        "$VCC_CMD" 2>/dev/null || printf 'n/a'
+        run_with_timeout "$VCC_CMD" 2>/dev/null || printf 'n/a'
         return
     fi
     if [[ -n "$VCC_PATH" && -r "$VCC_PATH" ]]; then
@@ -298,7 +379,11 @@ read t<N>'
         text+=$'
 modem
 pon gprs
-pon pptp'
+pon vpn
+pon auto
+poff gprs
+poff vpn
+poff all'
     fi
     if (( level >= 3 )); then
         text+=$'
@@ -394,6 +479,9 @@ case "$command_name" in
         ;;
     pon)
         cmd_pon "${command_args[@]}"
+        ;;
+    poff)
+        cmd_poff "${command_args[@]}"
         ;;
     read)
         cmd_read "${command_args[@]}"
