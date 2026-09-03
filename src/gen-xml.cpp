@@ -10,7 +10,7 @@ XMLNode GenXML(const CRecvSMSPart& part, bool debugFlag) {
 
     xPart.addAttribute("From", toUTF8(part.m_From).c_str());
 
-    sprintf(tmp, "%02X", part.m_nRefNr);
+    sprintf(tmp, "%04X", part.m_nRefNr);
     xPart.addAttribute("ref", tmp);
 
     sprintf(tmp, "%d", part.m_nPartNo);

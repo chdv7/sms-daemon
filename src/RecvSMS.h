@@ -14,7 +14,7 @@ using namespace std;
 
 #define MAX_SMS_TIME (15 * 24 * 3600) // 15 days
 
-using smsCacheKey = std::pair<uint8_t, std::wstring>;
+using smsCacheKey = std::pair<uint16_t, std::wstring>;
 
 struct hashSmsKey {
     size_t operator()(const smsCacheKey& p) const noexcept {
@@ -33,7 +33,7 @@ public:
     std::string m_TimeStamp{};
     uint8_t m_nPartNo{};
     uint8_t m_nParts{};
-    uint8_t m_nRefNr{};
+    uint16_t m_nRefNr{};
     time_t m_RecvTime{};
     smsCacheKey getKey() const {
         return {m_nRefNr, m_From};

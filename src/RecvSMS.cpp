@@ -77,15 +77,6 @@ void AppendWstring(wstring& w, const char* s) {
         w += *(unsigned char*)(s++);
 }
 
-struct T_UDH {
-    unsigned char udhl;
-    unsigned char iei;
-    unsigned char iedl;
-    unsigned char refNr;
-    unsigned char totalParts;
-    unsigned char thisPart;
-};
-
 static int TextToBin(const char* text, int maxlen, unsigned char* bin) {
     int bLen = strlen(text) / 2;
     if(bLen > maxlen)
@@ -328,29 +319,59 @@ int CRecvSMSPart::ProcessRecvPDU(std::string rawText) {
     sms += 2;
     // userData
     bool hasUDH = nSmsDeliver & 0x40;
-    T_UDH udh;
+    int udhPadBits = 0;
     if(hasUDH) {
-        if(TextToBin(sms, sizeof(udh), (unsigned char*)&udh) < 0)
+        const int udhl = GetInt(sms);
+        if(udhl < 0)
             return -6;
-        udl -= sizeof(udh); // correct UDL with size of UDH in bytes for 7 bit
-                            // coding it has to be corrected additionaly
-        m_nParts = udh.totalParts;
-        m_nPartNo = udh.thisPart;
-        m_nRefNr = udh.refNr;
-        sms += sizeof(udh) * 2;
+        const int udhBytes = udhl + 1;
+        if(strlen(sms) < static_cast<size_t>(udhBytes * 2))
+            return -6;
+
+        std::vector<unsigned char> udh(udhBytes);
+        if(TextToBin(sms, udhBytes, udh.data()) != udhBytes)
+            return -6;
+
+        for(int pos = 1; pos + 1 < udhBytes;) {
+            const unsigned char iei = udh[pos++];
+            const unsigned char iedl = udh[pos++];
+            if(pos + iedl > udhBytes)
+                return -6;
+
+            if(iei == 0x00 && iedl == 3) {
+                m_nRefNr = udh[pos];
+                m_nParts = udh[pos + 1];
+                m_nPartNo = udh[pos + 2];
+            }
+            else if(iei == 0x08 && iedl == 4) {
+                m_nRefNr = (static_cast<uint16_t>(udh[pos]) << 8) | udh[pos + 1];
+                m_nParts = udh[pos + 2];
+                m_nPartNo = udh[pos + 3];
+            }
+            pos += iedl;
+        }
+
+        sms += udhBytes * 2;
+        if((dcs & 0xEC) == 0x00) {
+            const int udhSeptets = (udhBytes * 8 + 6) / 7;
+            udhPadBits = udhSeptets * 7 - udhBytes * 8;
+            udl -= udhSeptets;
+        }
+        else {
+            udl -= udhBytes;
+        }
+        if(udl < 0)
+            return -6;
     }
     switch(dcs & 0xEC) {
     case 0x00: {
         int first_chr_of_7bitSMS = -1;
-        if(hasUDH) {  // manual correction of first character
-            udl -= 1; // correct UDL. Length of UDH in septets is 7. 6 of them
-                      // is already corrected by UDH processing. UDH len in
-                      // bytes(6) already counded during UDH procesing
+        if(hasUDH && udhPadBits > 0) {  // manual correction of first character
             if(udl > 0) {
                 first_chr_of_7bitSMS = GetInt(sms);
                 if(first_chr_of_7bitSMS < 0)
                     return -7;
-                first_chr_of_7bitSMS >>= 1;
+                first_chr_of_7bitSMS >>= udhPadBits;
                 udl--;
                 sms += 2;
             }
